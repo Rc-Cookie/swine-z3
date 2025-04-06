@@ -123,7 +123,7 @@ void Swine::base_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas) {
     }
     const auto base {e.arg(0)};
     const auto exp {e.arg(1)};
-    if (!util->is_value(base) || util->value(base) < 0) {
+    if (!utils::is_value(base) || utils::value(base) < 0) {
         const auto conclusion_even {e == util->make_exp(-base, exp)};
         const auto conclusion_odd {e == -util->make_exp(-base, exp)};
         auto premise_even {z3::mod(exp, ctx.int_val(2)) == ctx.int_val(0)};
@@ -162,17 +162,17 @@ void Swine::compute_bounding_lemmas(const ExpGroup &g) {
         // exp = 1 ==> base^exp = base
         lemma = z3::implies(exp == ctx.int_val(1), e == base);
         set.push_back(lemma);
-        if (!util->is_value(base) || util->value(base) == 0) {
+        if (!utils::is_value(base) || utils::value(base) == 0) {
             // base = 0 && ... ==> base^exp = 0
             lemma = (base == ctx.int_val(0) && exp != ctx.int_val(0)) == (e == ctx.int_val(0));
             set.push_back(lemma);
         }
-        if (!util->is_value(base) || util->value(base) == 1) {
+        if (!utils::is_value(base) || utils::value(base) == 1) {
             // base = 1 && ... ==> base^exp = 1
             lemma = z3::implies(base == ctx.int_val(1), e == ctx.int_val(1));
             set.push_back(lemma);
         }
-        if (!util->is_value(base) || util->value(base) > 1) {
+        if (!utils::is_value(base) || utils::value(base) > 1) {
             // exp + base > 4 && s > 1 && t > 1 ==> base^exp > s * t + 1
             lemma = z3::implies(
                 base + exp > ctx.int_val(4) && base > ctx.int_val(1) && exp > ctx.int_val(1),
@@ -237,9 +237,9 @@ Swine::EvaluatedExponential::EvaluatedExponential(const z3::expr &exp_expression
 
 Swine::EvaluatedExponential Swine::evaluate_exponential(const z3::expr &exp_expression) const {
     EvaluatedExponential res{exp_expression};
-    res.exp_expression_val = util->value(get_value(res.exp_expression));
-    res.base_val = util->value(get_value(res.base));
-    res.exponent_val = Util::to_int(get_value(res.exponent));
+    res.exp_expression_val = utils::value(get_value(res.exp_expression));
+    res.base_val = utils::value(get_value(res.base));
+    res.exponent_val = utils::to_int(get_value(res.exponent));
     res.expected_val = pow(res.base_val, abs(res.exponent_val));
     return res;
 }
@@ -281,7 +281,7 @@ z3::expr Swine::interpolation_lemma(const z3::expr &t, const bool upper, const s
     const auto exponent_in_bounds {util->term(y1) <= exp && exp <= util->term(y2)};
     // exponent > 0
     const auto exponent_positive {exp > util->term(0)};
-    if (util->is_value(base)) {
+    if (utils::is_value(base)) {
         const auto i {interpolate(t, 1, y1, y2)};
         const auto premise = upper ? exponent_in_bounds : exponent_positive;
         const auto conclusion_lhs {t * util->term(i.factor)};
@@ -423,7 +423,7 @@ std::optional<z3::expr> Swine::monotonicity_lemma(const EvaluatedExponential &e1
     z3::expr premise{ctx};
     const z3::expr strict_exp_premise {smaller.exponent < greater.exponent};
     const z3::expr non_strict_exp_premise {smaller.exponent <= greater.exponent};
-    if (!util->is_value(smaller.base) || !util->is_value(greater.base)) {
+    if (!utils::is_value(smaller.base) || !utils::is_value(greater.base)) {
         const z3::expr strict_base_premise {smaller.base < greater.base};
         const z3::expr non_strict_base_premise {smaller.base <= greater.base};
         premise = non_strict_base_premise && non_strict_exp_premise && (strict_base_premise || strict_exp_premise);
@@ -447,7 +447,7 @@ void Swine::monotonicity_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lem
             for (const auto &e: g->maybe_non_neg_base()) {
                 const auto base {e.arg(0)};
                 const auto exp {e.arg(1)};
-                if (util->value(get_value(base)) > 1 && util->value(get_value(exp)) > 0) {
+                if (utils::value(get_value(base)) > 1 && utils::value(get_value(exp)) > 0) {
                     exps.push_back(e);
                 }
             }

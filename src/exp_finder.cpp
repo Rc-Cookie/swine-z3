@@ -5,8 +5,8 @@ namespace swine {
 ExpGroup::ExpGroup(const z3::expr &t, Util &util):
     t(t),
     util(util),
-    ground_base(util.is_value(t.arg(0))),
-    neg_base(ground_base && util.value(t.arg(0)) < 0) {}
+    ground_base(utils::is_value(t.arg(0))),
+    neg_base(ground_base && utils::value(t.arg(0)) < 0) {}
 
 z3::expr_vector ExpGroup::all() const {
     z3::expr_vector res{util.ctx};
@@ -48,7 +48,7 @@ void ExpFinder::find_exps(const z3::expr &term, z3::expr_vector &res) {
         for (auto c: term.args()) {
             find_exps(c, res);
         }
-        if (util.is_abstract_exp(term)) {
+        if (utils::is_exp(term)) {
             res.push_back(term);
         }
     }

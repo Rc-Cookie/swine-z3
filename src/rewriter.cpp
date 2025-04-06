@@ -16,16 +16,16 @@ z3::expr Rewriter::rewrite(const z3::expr &t) {
         for (const auto &c: t.args()) {
             children.push_back(rewrite(c));
         }
-        if (util.is_abstract_exp(t)) {
+        if (utils::is_exp(t)) {
             const auto base {children[0]};
             const auto exp {children[1]};
             if (base.id() == one.id() || exp.id() == zero.id()) {
                 res = util.term(1);
             } else if (exp.id() == one.id() || exp.id() == mone.id()) {
                 res = base;
-            } else if (util.is_value(exp)) {
+            } else if (utils::is_value(exp)) {
                 res = rewrite(z3::pw(base, exp));
-            } else if (util.is_abstract_exp(base)) {
+            } else if (utils::is_exp(base)) {
                 const auto inner_base {base.arg(0)};
                 const auto inner_exp {base.arg(1)};
                 res = util.make_exp(inner_base, exp * inner_exp);
@@ -34,7 +34,7 @@ z3::expr Rewriter::rewrite(const z3::expr &t) {
             std::unordered_map<unsigned, z3::expr_vector> exp_map;
             z3::expr_vector new_children{util.ctx};
             for (const auto &c: children) {
-                if (util.is_abstract_exp(c)) {
+                if (utils::is_exp(c)) {
                     const auto exp {c.arg(1)};
                     auto &set {exp_map.emplace(exp.id(), z3::expr_vector(util.ctx)).first->second};
                     set.push_back(c);
@@ -61,9 +61,9 @@ z3::expr Rewriter::rewrite(const z3::expr &t) {
         } else if (t.decl().decl_kind() == Z3_OP_POWER) {
             const auto fst {rewrite(children[0])};
             const auto snd {rewrite(children[1])};
-            if (util.is_value(snd)) {
-                const auto val {util.value(snd)};
-                if (util.is_abstract_exp(fst) && val >= 0) {
+            if (utils::is_value(snd)) {
+                const auto val {utils::value(snd)};
+                if (utils::is_exp(fst) && val >= 0) {
                     const auto base {fst.arg(0)};
                     const auto exp {fst.arg(1)};
                     res = util.make_exp(base, exp * snd);

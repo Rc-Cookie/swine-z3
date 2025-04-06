@@ -3,6 +3,28 @@
 namespace swine {
 
 
+bool expr_set::add(const z3::expr &expr) {
+    auto [_,is_new] = emplace(expr.id(), expr);
+    return is_new;
+}
+
+bool expr_set::erase(const z3::expr &expr) {
+    return erase(expr.id());
+}
+
+bool expr_set::erase(unsigned int id) {
+    return unordered_map<unsigned int, z3::expr>::erase(id);
+}
+
+bool expr_set::contains(const z3::expr &expr) {
+    return contains(expr.id());
+}
+
+bool expr_set::contains(unsigned int expr_id) {
+    return unordered_map<unsigned int, z3::expr>::contains(expr_id);
+}
+
+
 namespace utils {
 
     cpp_int value(const z3::expr &term) {

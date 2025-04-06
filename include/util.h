@@ -11,6 +11,54 @@ namespace swine {
 using namespace boost::multiprecision;
 
 /**
+ * A set of expressions, implemented by mapping each expression by their id in an unordered_map.
+ */
+class expr_set: public std::unordered_map<unsigned int, z3::expr> {
+public:
+    /**
+     * Inserts the given expression into the expression set, if not already contained.
+     *
+     * @param expr The expression to insert
+     * @return True if the expression was newly added, false if it was already in the set
+     */
+    bool add(const z3::expr &expr);
+
+    /**
+     * Removes the given expression from the expression set, if it was contained.
+     *
+     * @param expr The expression to remove
+     * @return Whether the expression was previously in the set
+     */
+    bool erase(const z3::expr &expr);
+
+    /**
+     * Removes the given expression with the given id from the expression set, if such an
+     * expression was contained.
+     *
+     * @param expr The expression id to remove
+     * @return Whether the was previously an expression with that id in the set
+     */
+    bool erase(unsigned int expr_id);
+
+    /**
+     * Returns whether the given expression is in this set.
+     *
+     * @param expr The expression in question
+     * @return True iff the expression is contained in this set
+     */
+    bool contains(const z3::expr &expr);
+
+    /**
+     * Returns whether an expression with the given id is in this set.
+     *
+     * @param expr_id The expression id in question
+     * @return True iff the this set contains an expression with the given id
+     */
+    bool contains(unsigned int expr_id);
+};
+
+
+/**
  * Utility functions for Z3 related stuff that don't require additional context.
  */
 namespace utils {

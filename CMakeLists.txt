@@ -59,8 +59,8 @@ add_executable(${EXECUTABLE} "")
 set (SOURCES
     "${PROJECT_SOURCE_DIR}/include/swine.h"
     "${PROJECT_SOURCE_DIR}/src/swine.cpp"
-    "${PROJECT_SOURCE_DIR}/src/term_evaluator.cpp"
     "${PROJECT_SOURCE_DIR}/include/term_evaluator.h"
+    "${PROJECT_SOURCE_DIR}/src/term_evaluator.cpp"
     "${PROJECT_SOURCE_DIR}/include/constant_propagator.h"
     "${PROJECT_SOURCE_DIR}/src/constant_propagator.cpp"
     "${PROJECT_SOURCE_DIR}/include/rewriter.h"

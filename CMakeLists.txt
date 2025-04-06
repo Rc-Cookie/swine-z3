@@ -81,6 +81,8 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/src/config.cpp"
     "${PROJECT_SOURCE_DIR}/include/stats.h"
     "${PROJECT_SOURCE_DIR}/src/stats.cpp"
+    "${PROJECT_SOURCE_DIR}/include/term.h"
+    "${PROJECT_SOURCE_DIR}/src/term.cpp"
     "${PROJECT_SOURCE_DIR}/include/range_utils.h"
     "${PROJECT_SOURCE_DIR}/include/version.h"
     "${PROJECT_SOURCE_DIR}/src/version.cpp"

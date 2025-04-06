@@ -31,7 +31,7 @@ public:
     z3::context &ctx;
     std::unique_ptr<z3::func_decl> exp;
 
-    Util(z3::context &ctx, const Config &config, const Statistics &stats);
+    Util(z3::context &ctx, const Config &config, Statistics &stats);
     cpp_int value(const z3::expr &term) const;
     z3::expr term(const cpp_int &value);
     bool is_abstract_exp(const z3::expr &term) const;

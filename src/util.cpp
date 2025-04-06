@@ -4,7 +4,7 @@ namespace swine {
 
 ExponentOverflow::ExponentOverflow(const z3::expr &t): std::out_of_range(""), t(t) {}
 
-Util::Util(z3::context &ctx, const Config &config, const Statistics &stats):
+Util::Util(z3::context &ctx, const Config &config, Statistics &stats):
     config(config),
     stats(stats),
     ctx(ctx) {

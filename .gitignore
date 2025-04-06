@@ -4,3 +4,5 @@ CMakeLists.txt.user
 QtProject
 src/version.cpp
 swine-z3.zip
+.idea
+custom-cmake

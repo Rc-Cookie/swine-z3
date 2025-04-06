@@ -6,8 +6,11 @@
 
 #include <boost/algorithm/string.hpp>
 #include <z3++.h>
+#include <filesystem>
+#include <fstream>
 
 using namespace swine;
+namespace fs = std::filesystem;
 
 void version() {
     std::cout << "Build SHA: " << Version::GIT_SHA << " (" << Version::GIT_DIRTY << ")" << std::endl;
@@ -45,6 +48,53 @@ void print_help() {
     std::cout << "  --no-version          : omit the SwInE version at the end of the output" << std::endl;
     std::cout << "  --log                 : enable logging" << std::endl;
     std::cout << std::endl;
+}
+
+std::pair<z3::check_result, Statistics> run_file(Config &config, std::string file, bool single) {
+    // Print file name first so that it is clear what's currently calculating. When not logging anything in between,
+    // sat/unsat/unknown will be printed in the same line, so no std::endl.
+    if(config.log || config.debug)
+        std::cout << file << std::endl;
+    else std::cout << file << std::string(file.length() < 80 ? 80 - file.length() : 0, ' ') << std::flush;
+
+    Timer timer;
+
+    // Load file
+    z3::context ctx;
+    Swine swine(config, ctx);
+    Z3_func_decl const decls[]{swine.get_exp()};
+    Z3_symbol const decl_names[]{swine.get_exp().name()};
+    Z3_ast_vector v {Z3_parse_smtlib2_file(ctx, file.c_str(), 0, 0, 0, 1, decl_names, decls)};
+    ctx.check_error();
+    Z3_ast_vector_inc_ref(ctx, v);
+
+    // Combine all parts into one expression; that allows for better preprocessing (inlining a variable from one
+    // expression in another one). In the future, this should probably be moved into the Swine::add logic.
+    unsigned sz = Z3_ast_vector_size(ctx, v);
+    z3::expr combined = ctx.bool_val(true);
+    for (unsigned i = 0; i < sz; ++i) {
+        combined = combined && z3::expr(ctx, Z3_ast_vector_get(ctx, v, i));
+    }
+    swine.add(combined);
+    Z3_ast_vector_dec_ref(ctx, v);
+
+    // Actually solve
+    const auto res {swine.check()};
+
+    // Print result and duration
+    Timer::duration duration = timer;
+    if(config.log || config.debug)
+        std::cout << std::string(80, ' ');
+    std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms" << std::endl;
+
+    // Don't print model if we're not logging and solving many files at once
+    if(res == z3::sat && (single || config.log || config.debug))
+        std::cout << swine.get_model() << std::endl;
+    // Same for statistics, will be summarized instead after all are done
+    if(config.statistics && (single || config.log || config.debug))
+        std::cout << swine.get_stats() << std::endl;
+
+    return { res, swine.get_stats() };
 }
 
 int main(int argc, char *argv[]) {
@@ -125,26 +175,46 @@ int main(int argc, char *argv[]) {
         print_help();
         throw;
     }
-    z3::context ctx;
-    Swine swine(config, ctx);
-    Z3_func_decl const decls[]{swine.get_exp()};
-    Z3_symbol const decl_names[]{swine.get_exp().name()};
-    Z3_ast_vector v {Z3_parse_smtlib2_file(ctx, input->c_str(), 0, 0, 0, 1, decl_names, decls)};
-    ctx.check_error();
-    Z3_ast_vector_inc_ref(ctx, v);
-    unsigned sz = Z3_ast_vector_size(ctx, v);
-    for (unsigned i = 0; i < sz; ++i) {
-        swine.add(z3::expr(ctx, Z3_ast_vector_get(ctx, v, i)));
+
+    Timer::duration totalDuration = Timer::duration::zero();
+
+    // If directory, run all files recursively, otherwise just run the file itself
+    if(fs::is_directory(*input)) {
+        unsigned int i = 0;
+        std::vector<std::tuple<std::string, z3::check_result, Timer::duration>> results;
+        for(const auto &e : fs::recursive_directory_iterator(*input)) {
+            if(!e.is_regular_file())
+                continue;
+
+            ++i;
+            std::string name = fs::relative(e).string();
+            if(e.path().filename().string().starts_with('.'))
+                continue;
+
+            Timer timer;
+            const auto [res, stats] = run_file(config, name, false);
+            Timer::duration duration = timer;
+            totalDuration += duration;
+            results.push_back({ name, res, duration });
+        }
+
+        // If we have a bunch of output, summarize in compact form
+        if(config.log || config.debug) {
+            std::cout << "\n-------- Summary --------" << std::endl;
+            for(const auto &[n,r,ms] : results)
+                std::cout << n << std::string(n.length() < 80 ? 80 - n.length() : 0, ' ') << ": " << (r == z3::sat ? "sat    " : r == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(ms).count() << " ms" << std::endl;
+        }
     }
-    Z3_ast_vector_dec_ref(ctx, v);
-    const auto res {swine.check()};
-    std::cout << res << std::endl;
-    if (res == z3::sat) {
-        std::cout << swine.get_model() << std::endl;
+    else if(fs::is_regular_file(*input)) {
+        Timer timer;
+        const auto [_, stats] = run_file(config, *input, true);
+        totalDuration += timer;
     }
-    if (config.statistics) {
-        std::cout << swine.get_stats() << std::endl;
-    }
+    else throw z3::exception("File not found / not a file or a directory");
+
+    if(config.statistics || config.log || config.debug)
+        std::cout << "\nTotal time: " << std::chrono::duration_cast<std::chrono::milliseconds>(totalDuration).count() << " ms" << std::endl;
+
     if (show_version) {
         version();
     }

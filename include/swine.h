@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.h"
+#include "stats.h"
 
 #include <z3++.h>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -52,20 +53,6 @@ private:
     };
 
     friend std::ostream& operator<<(std::ostream &s, const EvaluatedExponential &exp);
-
-    struct Statistics {
-        unsigned int iterations {0};
-        unsigned int symmetry_lemmas {0};
-        unsigned int bounding_lemmas {0};
-        unsigned int prime_lemmas {0};
-        unsigned int interpolation_lemmas {0};
-        unsigned int monotonicity_lemmas {0};
-        unsigned int induction_lemmas {0};
-        unsigned int num_assertions {0};
-        bool non_constant_base {false};
-    };
-
-    friend std::ostream& operator<<(std::ostream &s, const Swine::Statistics &stats);
 
     struct Interpolant {
         z3::expr t;
@@ -128,10 +115,9 @@ public:
     z3::func_decl& get_exp();
     z3::solver& get_solver();
     const z3::solver& get_solver() const;
+    const Statistics& get_stats() const;
 
 };
-
-std::ostream& operator<<(std::ostream &s, const Swine::Statistics &stats);
 
 std::ostream& operator<<(std::ostream &s, const Swine &swine);
 

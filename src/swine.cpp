@@ -27,18 +27,6 @@ std::ostream& operator<<(std::ostream &s, const Swine::EvaluatedExponential &exp
            exp.exp_expression_val;
 }
 
-std::ostream& operator<<(std::ostream &s, const Swine::Statistics &stats) {
-    s << "assertions           : " << stats.num_assertions << std::endl;
-    s << "iterations           : " << stats.iterations << std::endl;
-    s << "symmetry lemmas      : " << stats.symmetry_lemmas << std::endl;
-    s << "bounding lemmas      : " << stats.bounding_lemmas << std::endl;
-    s << "monotonicity lemmas  : " << stats.monotonicity_lemmas << std::endl;
-    s << "induction lemmas     : " << stats.induction_lemmas << std::endl;
-    s << "interpolation lemmas : " << stats.interpolation_lemmas << std::endl;
-    s << "non constant base    : " << (stats.non_constant_base ? "true" : "false") << std::endl;
-    return s;
-}
-
 std::ostream& operator<<(std::ostream &s, const Swine &swine) {
     return s << swine.get_solver();
 }
@@ -49,7 +37,7 @@ Swine::Swine(const Config &config, z3::context &ctx):
     config(config),
     ctx(ctx),
     solver(ctx),
-    util(std::make_unique<Util>(ctx, this->config)),
+    util(std::make_unique<Util>(ctx, this->config, this->stats)),
     preproc(std::make_unique<Preprocessor>(*util)),
     exp_finder(std::make_unique<ExpFinder>(*util)),
     model(ctx) {
@@ -707,9 +695,6 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
             return z3::unknown;
         }
     }
-    if (config.statistics) {
-        std::cout << stats << std::endl;
-    }
     return res;
 }
 
@@ -791,6 +776,10 @@ z3::func_decl& Swine::get_exp() {
 
 const z3::solver& Swine::get_solver() const {
     return solver;
+}
+
+const Statistics &Swine::get_stats() const {
+    return stats;
 }
 
 z3::solver& Swine::get_solver() {

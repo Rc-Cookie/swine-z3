@@ -4,8 +4,9 @@ namespace swine {
 
 ExponentOverflow::ExponentOverflow(const z3::expr &t): std::out_of_range(""), t(t) {}
 
-Util::Util(z3::context &ctx, const Config &config):
+Util::Util(z3::context &ctx, const Config &config, const Statistics &stats):
     config(config),
+    stats(stats),
     ctx(ctx) {
     z3::sort_vector domain {ctx};
     domain.push_back(ctx.int_sort());

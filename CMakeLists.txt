@@ -79,6 +79,8 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/src/preproc_kind.cpp"
     "${PROJECT_SOURCE_DIR}/include/config.h"
     "${PROJECT_SOURCE_DIR}/src/config.cpp"
+    "${PROJECT_SOURCE_DIR}/include/stats.h"
+    "${PROJECT_SOURCE_DIR}/src/stats.cpp"
     "${PROJECT_SOURCE_DIR}/include/version.h"
     "${PROJECT_SOURCE_DIR}/src/version.cpp"
 )

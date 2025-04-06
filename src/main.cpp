@@ -142,6 +142,9 @@ int main(int argc, char *argv[]) {
     if (res == z3::sat) {
         std::cout << swine.get_model() << std::endl;
     }
+    if (config.statistics) {
+        std::cout << swine.get_stats() << std::endl;
+    }
     if (show_version) {
         version();
     }

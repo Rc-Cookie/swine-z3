@@ -27,7 +27,7 @@ class Util {
 public:
 
     const Config &config;
-    const Statistics &stats;
+    Statistics &stats;
     z3::context &ctx;
     std::unique_ptr<z3::func_decl> exp;
 
@@ -41,5 +41,7 @@ public:
     static long long to_int(const z3::expr &t);
 
 };
+
+
 
 }

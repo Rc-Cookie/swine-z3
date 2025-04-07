@@ -48,8 +48,8 @@ namespace swine {
             if(remainingVars.size() != nonLinear.size()) {
 
                 const std::vector<Z3_app> onlyLinearly = remainingVars
-                                                         | filter([&](const expr &v){ return !nonLinear.contains(v.id()); })
-                                                         | to<std::vector<Z3_app>>();
+                        | filter([&](const expr &v){ return !nonLinear.contains(v.id()); })
+                        | to<std::vector<Z3_app>>();
                 debug(onlyLinearly.size() << " variable" << (onlyLinearly.size() == 1 ? "" : "s") << " only occurs linearly -> eliminating with MBP");
 
                 expr projected = liaProject(formula, onlyLinearly, approximation);

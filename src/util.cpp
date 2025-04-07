@@ -282,7 +282,7 @@ namespace utils {
         return a.to_string().compare(b.to_string());
     }
 
-    cpp_int floor_log(const cpp_int &x, const cpp_int &base) {
+    cpp_int floor_log(const cpp_int &base, const cpp_int &x) {
         cpp_int remaining = x;
         cpp_int log = 0;
         while(remaining /= base)
@@ -290,7 +290,7 @@ namespace utils {
         return log;
     }
 
-    cpp_int ceil_log(const cpp_int &x, const cpp_int &base) {
+    cpp_int ceil_log(const cpp_int &base, const cpp_int &x) {
         return x == 1 ? 0 : floor_log(base, x - 1) + 1;
     }
 
@@ -413,4 +413,13 @@ cpp_int Util::abs_pow(const cpp_int &exponent) const {
     return utils::abs_pow(base, exponent);
 }
 
+}
+
+namespace range_utils {
+    std::vector<z3::expr> operator|(const z3::expr_vector &vec, _rangify) {
+        std::vector<z3::expr> res;
+        for(const z3::expr &expr : vec)
+            res.push_back(expr);
+        return res;
+    }
 }

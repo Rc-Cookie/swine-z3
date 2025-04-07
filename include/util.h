@@ -458,30 +458,30 @@ namespace utils {
     /**
      * Computes floor(log_base(x)).
      *
-     * @param x The value to compute the logarithm of
      * @param base The base for the log function
+     * @param x The value to compute the logarithm of
      * @return floor(log_base(x))
      */
-    cpp_int floor_log(const cpp_int &x, const cpp_int &base);
+    cpp_int floor_log(const cpp_int &base, const cpp_int &x);
 
     /**
      * Computes ceil(log_base(x)).
      *
-     * @param x The value to compute the logarithm of
      * @param base The base for the log function
+     * @param x The value to compute the logarithm of
      * @return ceil(log_base(x))
      */
-    cpp_int ceil_log(const cpp_int &x, const cpp_int &base);
+    cpp_int ceil_log(const cpp_int &base, const cpp_int &x);
 
     /**
      * Computes log_base(x), if the result would be an integer, otherwise it returns
      * an empty optional.
      *
-     * @param x The value to compute the logarithm of
      * @param base The base for the log function
+     * @param x The value to compute the logarithm of
      * @return log_base(x) if the result is exactly an integer, otherwise an empty optional
      */
-    std::optional<cpp_int> log_exact(const cpp_int &x, const cpp_int &base);
+    std::optional<cpp_int> log_exact(const cpp_int &base, const cpp_int &x);
 
     /**
      * Computes exp(base, abs(exp)).

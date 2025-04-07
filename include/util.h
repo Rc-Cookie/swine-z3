@@ -47,7 +47,7 @@ public:
      * @param expr The expression in question
      * @return True iff the expression is contained in this set
      */
-    bool contains(const z3::expr &expr);
+    bool contains(const z3::expr &expr) const;
 
     /**
      * Returns whether an expression with the given id is in this set.
@@ -55,7 +55,7 @@ public:
      * @param expr_id The expression id in question
      * @return True iff the this set contains an expression with the given id
      */
-    bool contains(unsigned int expr_id);
+    bool contains(unsigned int expr_id) const;
 };
 
 std::ostream& operator<<(std::ostream &s, const expr_set &set);

@@ -18,11 +18,11 @@ bool expr_set::erase(unsigned int id) {
     return unordered_map<unsigned int, z3::expr>::erase(id);
 }
 
-bool expr_set::contains(const z3::expr &expr) {
+bool expr_set::contains(const z3::expr &expr) const {
     return contains(expr.id());
 }
 
-bool expr_set::contains(unsigned int expr_id) {
+bool expr_set::contains(unsigned int expr_id) const {
     return unordered_map<unsigned int, z3::expr>::contains(expr_id);
 }
 

@@ -552,7 +552,7 @@ public:
      * @param value The numeric value for the expression
      * @return A z3::expr with the same numeric value of sort int
      */
-    z3::expr term(const cpp_int &value);
+    z3::expr term(const cpp_int &value) const;
 
     /**
      * Creates the expression exp(base, exponent).
@@ -561,7 +561,7 @@ public:
      * @param exponent The second argument for the exp call
      * @return The exp expression
      */
-    z3::expr make_exp(const z3::expr &base, const z3::expr &exponent);
+    z3::expr make_exp(const z3::expr &base, const z3::expr &exponent) const;
 
     /**
      * Creates the expression exp(base, exponent), where base is the configured common base.
@@ -569,7 +569,7 @@ public:
      * @param exponent The second argument for the exp call
      * @return The exp expression
      */
-    z3::expr make_exp(const z3::expr &exponent);
+    z3::expr make_exp(const z3::expr &exponent) const;
 
     /**
      * Converts a bool to an Z3 expression.

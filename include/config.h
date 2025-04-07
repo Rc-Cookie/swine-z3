@@ -5,6 +5,10 @@
 
 #include <unordered_set>
 
+// msg not inside parentheses on purpose, so that you can write stuff like 'log("Var: " << v)'
+#define _log(config, msg) do { if((config).log || (config).debug) { std::cout << msg << std::endl; } } while(0)
+#define _debug(config, msg) do { if((config).debug) { std::cout << msg << std::endl; } } while(0)
+
 namespace swine {
 
 class Config {

@@ -291,7 +291,14 @@ namespace utils {
     }
 
     cpp_int ceil_log(const cpp_int &x, const cpp_int &base) {
-        return x == 1 ? 0 : floor_log(x - 1, base) + 1;
+        return x == 1 ? 0 : floor_log(base, x - 1) + 1;
+    }
+
+    std::optional<cpp_int> log_exact(const cpp_int &base, const cpp_int &x) {
+        cpp_int log = floor_log(base, x);
+        if(abs_pow(base, log) == x)
+            return log;
+        else return { };
     }
 
     cpp_int abs_pow(const cpp_int &base, const cpp_int &exp) {
@@ -389,12 +396,16 @@ logic_reduction<false> Util::reduce_or() const {
 
 cpp_int Util::floor_log(const cpp_int &x) const {
     assert(base);
-    return utils::floor_log(x, base);
+    return utils::floor_log(base, x);
 }
 
 cpp_int Util::ceil_log(const cpp_int &x) const {
     assert(base);
-    return utils::ceil_log(x, base);
+    return utils::ceil_log(base, x);
+}
+
+std::optional<cpp_int> Util::log_exact(const cpp_int &x) const {
+    return utils::log_exact(base, x);
 }
 
 cpp_int Util::abs_pow(const cpp_int &exponent) const {

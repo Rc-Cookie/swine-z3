@@ -474,6 +474,16 @@ namespace utils {
     cpp_int ceil_log(const cpp_int &x, const cpp_int &base);
 
     /**
+     * Computes log_base(x), if the result would be an integer, otherwise it returns
+     * an empty optional.
+     *
+     * @param x The value to compute the logarithm of
+     * @param base The base for the log function
+     * @return log_base(x) if the result is exactly an integer, otherwise an empty optional
+     */
+    std::optional<cpp_int> log_exact(const cpp_int &x, const cpp_int &base);
+
+    /**
      * Computes exp(base, abs(exp)).
      *
      * @param base The base for the exponential function
@@ -630,6 +640,15 @@ public:
      * @return ceil(log(x))
      */
     cpp_int ceil_log(const cpp_int &x) const;
+
+    /**
+     * Computes log(x), if the result would be an integer, otherwise it returns an empty
+     * optional.
+     *
+     * @param x The value to compute the logarithm of
+     * @return log(x) if the result is exactly an integer, otherwise an empty optional
+     */
+    std::optional<cpp_int> log_exact(const cpp_int &x) const;
 
     /**
      * Computes exp(abs(x)) for the configured common base.

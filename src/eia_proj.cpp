@@ -237,8 +237,8 @@ namespace swine {
 
                 // beta <- |x| > g /\ (And_(u in V) |x| > g + |u|)
                 const expr bigCondition = absVar > g && (otherVars
-                                                         | transform([&](const expr &v){ return absVar > g + abs(v); })
-                                                         | util.reduce_and());
+                        | transform([&](const expr &v){ return absVar > g + abs(v); })
+                        | util.reduce_and());
 
                 // a <- coefficient as exp(x) in h
                 const cpp_int expCoeff =  similarComp.term.coefficients.at(varInPower.id());

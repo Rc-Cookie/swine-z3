@@ -46,7 +46,7 @@ namespace swine {
         else {
             const cpp_int ownCoeff = coefficients.at(id);
             if(coeff != -ownCoeff)
-                coefficients.emplace(id, ownCoeff + coeff);
+                coefficients.emplace(id, ownCoeff + coeff).first->second = ownCoeff + coeff;
             else {
                 variables.erase(var);
                 coefficients.erase(id);

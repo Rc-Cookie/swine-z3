@@ -7,13 +7,14 @@
 namespace swine {
 
 enum class PreprocKind {
-    ConstantFolding, Rewriting
+    ConstantFolding, Rewriting, Inlining
 };
 
 
 namespace preproc_kind {
 
-static const std::unordered_set<PreprocKind> values {PreprocKind::ConstantFolding, PreprocKind::Rewriting};
+static constexpr size_t count = 3;
+static const std::unordered_set<PreprocKind> values {PreprocKind::ConstantFolding, PreprocKind::Rewriting, PreprocKind::Inlining};
 
 std::string str(const PreprocKind k);
 

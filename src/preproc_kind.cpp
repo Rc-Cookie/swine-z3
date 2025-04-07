@@ -9,6 +9,7 @@ std::string preproc_kind::str(const PreprocKind k) {
     switch (k) {
     case PreprocKind::ConstantFolding: return "constant-folding";
     case PreprocKind::Rewriting: return "rewriting";
+    case PreprocKind::Inlining: return "inlining";
     default: throw std::invalid_argument("unknown preprocessing");
     }
 }

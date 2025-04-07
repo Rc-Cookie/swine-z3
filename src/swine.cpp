@@ -83,6 +83,8 @@ void Swine::add_lemma(const z3::expr &t, const LemmaKind kind) {
         break;
     case LemmaKind::Induction: ++stats.induction_lemmas;
         break;
+    case LemmaKind::EIA_n: ++stats.eia_n_lemmas;
+        break;
     default: throw std::invalid_argument("unknown lemma kind");
     }
 }
@@ -212,7 +214,7 @@ void Swine::add(const z3::expr &t) {
             std::cout << "assertion:" << std::endl;
             std::cout << t << std::endl;
         }
-        const auto preprocessed {preproc->preprocess(t)};
+        const auto preprocessed {preproc->preprocess(t, true)};
         if (config.validate_sat || config.validate_unsat || config.get_lemmas) {
             frames.back().preprocessed_assertions.emplace_back(preprocessed, t);
         }
@@ -539,7 +541,7 @@ void Swine::add_bounds() {
 std::vector<std::pair<z3::expr, LemmaKind>> Swine::preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
     std::vector<std::pair<z3::expr, LemmaKind>> res;
     for (const auto &[l,k]: lemmas) {
-        const auto p {preproc->preprocess(l)};
+        const auto p {preproc->preprocess(l, false)};
         if (get_value(p).is_false()) {
             res.emplace_back(p, k);
         }

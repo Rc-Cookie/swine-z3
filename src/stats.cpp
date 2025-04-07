@@ -12,6 +12,7 @@ namespace swine {
         interpolation_lemmas = 0;
         monotonicity_lemmas = 0;
         induction_lemmas = 0;
+        eia_n_lemmas = 0;
         num_assertions = 0;
         non_constant_base = false;
     }
@@ -25,6 +26,7 @@ namespace swine {
         s << "\nprime lemmas         : " << stats.prime_lemmas;
         s << "\ninduction lemmas     : " << stats.induction_lemmas;
         s << "\ninterpolation lemmas : " << stats.interpolation_lemmas;
+        s << "\neia-n lemmas         : " << stats.eia_n_lemmas;
         s << "\nnon constant base    : " << (stats.non_constant_base ? "true" : "false");
         return s;
     }

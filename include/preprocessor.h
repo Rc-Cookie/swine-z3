@@ -15,7 +15,7 @@ public:
 
     Preprocessor(Util &util);
 
-    z3::expr preprocess(const z3::expr &term);
+    z3::expr preprocess(const z3::expr &term, bool advanced);
 
 };
 

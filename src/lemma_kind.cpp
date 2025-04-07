@@ -13,6 +13,7 @@ std::string lemma_kind::str(const LemmaKind k) {
     case LemmaKind::Monotonicity: return "monotonicity";
     case LemmaKind::Induction: return "induction";
     case LemmaKind::Prime: return "prime";
+    case LemmaKind::EIA_n: return "eia-n";
     default: throw std::invalid_argument("unknown lemma kind");
     }
 }

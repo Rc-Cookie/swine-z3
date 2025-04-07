@@ -67,6 +67,8 @@ namespace swine {
         unsigned int monotonicity_lemmas {0};
         /** The number of induction lemmas used. */
         unsigned int induction_lemmas {0};
+        /** The number of EIA_n projection lemmas used. */
+        unsigned int eia_n_lemmas {0};
         /** The number of assertions added using Swine::add(). */
         unsigned int num_assertions {0};
         /** Whether any exp() expression had a non-constant term as base, after preprocessing. */

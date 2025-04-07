@@ -7,7 +7,7 @@
 namespace swine {
 
 enum class LemmaKind {
-    Symmetry, Bounding, Interpolation, Monotonicity, Induction, Prime
+    Symmetry, Bounding, Interpolation, Monotonicity, Induction, Prime, EIA_n
 };
 
 
@@ -18,7 +18,8 @@ static const std::unordered_set<LemmaKind> values {LemmaKind::Symmetry,
                                                   LemmaKind::Interpolation,
                                                   LemmaKind::Monotonicity,
                                                   LemmaKind::Induction,
-                                                  LemmaKind::Prime};
+                                                  LemmaKind::Prime,
+                                                  LemmaKind::EIA_n};
 
 std::string str(const LemmaKind k);
 

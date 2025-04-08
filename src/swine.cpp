@@ -5,13 +5,18 @@
 #include "exp_finder.h"
 #include "term_evaluator.h"
 #include "util.h"
+#include "term.h"
 
 #include <assert.h>
 #include <limits>
 
+#define log(msg) _log(config, msg)
+#define debug(msg) _debug(config, msg)
+
 namespace swine {
 
 using namespace boost::multiprecision;
+using namespace range_utils;
 
 std::ostream& operator<<(std::ostream &s, const Swine::EvaluatedExponential &exp) {
     return s <<
@@ -40,7 +45,9 @@ Swine::Swine(const Config &config, z3::context &ctx):
     util(std::make_unique<Util>(ctx, this->config, this->stats)),
     preproc(std::make_unique<Preprocessor>(*util)),
     exp_finder(std::make_unique<ExpFinder>(*util)),
-    model(ctx) {
+    model(ctx),
+    common_base(0),
+    input(util->top()) {
     solver.set("model", true);
     if (config.get_lemmas) {
         solver.set("unsat_core", true);
@@ -53,10 +60,7 @@ Swine::~Swine(){
 }
 
 void Swine::add_lemma(const z3::expr &t, const LemmaKind kind) {
-    if (config.log) {
-        std::cout << kind << " lemma:" << std::endl;
-        std::cout << t << std::endl;
-    }
+    log(kind << " lemma:\n" << t);
     if (config.validate_unsat || config.get_lemmas) {
         frames.back().lemma_kinds.emplace(t.id(), kind);
         frames.back().lemmas.emplace(t.id(), t);
@@ -91,6 +95,37 @@ void Swine::add_lemma(const z3::expr &t, const LemmaKind kind) {
 
 z3::expr Swine::get_value(const z3::expr &exp) const {
     return model.eval(exp, true);
+}
+
+bool Swine::update_common_base(const z3::expr &expr) {
+    common_base = 0;
+    for (const z3::expr &t : utils::find(expr, [](const z3::expr &e){ return e.is_int(); })) {
+        std::optional<Term> term{Term::try_parse(t)};
+        if (!term) {
+            log("Not a term: " << t);
+            common_base = {};
+            return false;
+        }
+        for(const z3::expr &v : term->variables | std::views::values) {
+            if (utils::is_var(v)) {
+                continue;
+            }
+            if (!utils::is_exp(v)) {
+                log("Not a linear term: " << v << " in " << *term);
+                common_base = {};
+                return false;
+            }
+            if (!v.arg(0).is_numeral() || !utils::is_var(v.arg(1))) {
+                log("Not a constant raised by a variable: " << v << " in " << *term);
+                common_base = {};
+                return false;
+            }
+            if (!utils::join_common_base(common_base, utils::value(v.arg(0)))) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 void Swine::symmetry_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
@@ -208,28 +243,9 @@ void Swine::bounding_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas)
 }
 
 void Swine::add(const z3::expr &t) {
-    try {
-        ++stats.num_assertions;
-        if (config.log) {
-            std::cout << "assertion:" << std::endl;
-            std::cout << t << std::endl;
-        }
-        const auto preprocessed {preproc->preprocess(t, true)};
-        if (config.validate_sat || config.validate_unsat || config.get_lemmas) {
-            frames.back().preprocessed_assertions.emplace_back(preprocessed, t);
-        }
-        solver.add(preprocessed);
-        for (const auto &g: exp_finder->find_exps(preprocessed)) {
-            if (frames.back().exp_ids.emplace(g.orig().id()).second) {
-                frames.back().exps.push_back(g.orig());
-                frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));
-                stats.non_constant_base |= !g.has_ground_base();
-                compute_bounding_lemmas(g);
-            }
-        }
-    } catch (const ExponentOverflow &e) {
-        frames.back().assert_failed = true;
-    }
+    ++stats.num_assertions;
+    log("assertion:\n" << t);
+    input = input && t;
 }
 
 Swine::EvaluatedExponential::EvaluatedExponential(const z3::expr &exp_expression):
@@ -522,6 +538,24 @@ void Swine::prime_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
     }
 }
 
+void Swine::eia_n_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
+    if (!eia_proj || !config.is_active(LemmaKind::EIA_n)) {
+        return;
+    }
+    const auto [premise, projected] = eia_proj->evaluateCase(solver.get_model());
+
+    if(projected) {
+        log("Projected to true -> no new EIA_" << *common_base << " lemmas");
+//        ++util->stats.unusable_eia_n_lemmas;
+        return;
+    }
+
+    assert(get_value(premise).is_true());
+    log("Approximation projected formula to false, with premise:\n" << premise);
+
+    lemmas.emplace_back(!premise, LemmaKind::EIA_n);
+}
+
 void Swine::add_bounds() {
     std::unordered_set<unsigned int> seen;
     const auto b {util->term(pow(cpp_int(2), bound))};
@@ -550,11 +584,136 @@ std::vector<std::pair<z3::expr, LemmaKind>> Swine::preprocess_lemmas(const std::
 }
 
 z3::check_result Swine::check(z3::expr_vector assumptions) {
-    for (const auto &f: frames) {
-        if (f.assert_failed) {
-            return z3::unknown;
+    const bool eia_n{config.is_active(LemmaKind::EIA_n)};
+    try {
+        z3::expr formula{ctx};
+        if (config.is_active(LemmaKind::EIA_n)) {
+            formula = preproc->preprocess(input, true);
+            if (update_common_base(formula)) {
+                log("Using exponent substitutions");
+                util->base = *common_base;
+                eia_proj = std::make_unique<EIAProj>(*util, formula);
+            } else {
+                log("Restarting preprocessing");
+                formula = preproc->preprocess(input, false);
+            }
+        } else {
+            formula = preproc->preprocess(input, false);
         }
+        solver.add(formula);
+
+        frames.back().preprocessed_assertions.clear();
+        if (config.validate_sat || config.validate_unsat || config.get_lemmas) {
+            frames.back().preprocessed_assertions.emplace_back(formula, input);
+        }
+        frames.back().exp_ids.clear();
+        frames.back().exps.resize(0);
+        frames.back().exp_groups.clear();
+        stats.non_constant_base = true;
+        for (const auto &g: exp_finder->find_exps(formula)) {
+            if (frames.back().exp_ids.emplace(g.orig().id()).second) {
+                frames.back().exps.push_back(g.orig());
+                frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));
+                stats.non_constant_base |= !g.has_ground_base();
+                compute_bounding_lemmas(g);
+            }
+        }
+    } catch (const ExponentOverflow &e) {
+        frames.back().assert_failed = true;
+        return z3::unknown;
     }
+
+    z3::check_result res {z3::unknown};
+    if (eia_n && common_base && !*common_base) {
+        std::cout << ": Z3     ";
+        res = check_with_z3(assumptions);
+    } else if (!eia_n || !common_base || config.model) {
+        std::cout << ": Lemmas ";
+        res = check_with_lemmas(assumptions);
+    } else if (config.non_lazy) {
+        std::cout << ": EIA    ";
+        res = check_with_eia_n(assumptions);
+    } else {
+        std::cout << ": EIAProj";
+        res = check_with_eia_n_proj(assumptions);
+    }
+    return res;
+}
+
+z3::check_result Swine::check_with_z3(const z3::expr_vector &assumptions) {
+    const z3::check_result res {assumptions.empty() ? solver.check() : solver.check(assumptions)};
+    if (res == z3::sat && config.validate_sat) {
+        verify();
+    } else if(res == z3::unsat && config.validate_unsat) {
+        brute_force();
+    }
+    return res;
+}
+
+z3::check_result Swine::check_with_eia_n(const z3::expr_vector &assumptions) {
+//    return EIANSolver(*util).check((assumptions | rangify | util->reduce_and()) && (solver.assertions() | rangify | util->reduce_and()));
+    return z3::unknown;
+}
+
+z3::check_result Swine::check_with_eia_n_proj(const z3::expr_vector &assumptions) {
+    z3::check_result res = z3::unknown;
+
+    for(unsigned int iterations = 1; config.rlimit == 0 || config.rlimit <= iterations; iterations++) {
+
+        ++util->stats.iterations;
+        log("---------------- Approximation iteration #" << iterations << " ----------------");
+
+        Timer timer;
+        res = solver.check(assumptions);
+//        util->stats.timings.approximate += timer;
+        if(res != z3::sat) {
+            assert(res == z3::unsat);
+            log("No approximation found -> unsat after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
+            break;
+        }
+
+        log("Approximation:\n" << solver.get_model());
+        const auto [premise, projected] = eia_proj->evaluateCase(solver.get_model());
+
+        if(projected) {
+            log("Projected to true -> sat after " << iterations << (iterations == 1 ? " iteration" : " iterations"));
+            res = z3::sat;
+            break;
+        }
+        assert(get_value(premise).is_true());
+        log("Approximation projected formula to false, with premise:\n" << premise);
+        ++util->stats.eia_n_lemmas;
+        solver.add(!premise);
+    }
+
+    if(res == z3::sat && config.validate_sat) {
+        std::cout << "\nVerify not applicable for EIAProj algorithm" << std::endl;
+    }
+    else if (res == z3::unsat && config.validate_unsat) {
+        brute_force();
+    }
+    return res;
+}
+
+z3::check_result Swine::check_with_lemmas(z3::expr_vector &assumptions) {
+    try {
+        frames.back().exp_ids.clear();
+        frames.back().exps.resize(0);
+        frames.back().exp_groups.clear();
+        stats.non_constant_base = true;
+        for (const auto &g: exp_finder->find_exps(solver.assertions() | rangify | util->reduce_and())) {
+            if (frames.back().exp_ids.emplace(g.orig().id()).second) {
+                frames.back().exps.push_back(g.orig());
+                frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));
+                stats.non_constant_base |= !g.has_ground_base();
+                compute_bounding_lemmas(g);
+            }
+        }
+    } catch (const ExponentOverflow &e) {
+        frames.back().assert_failed = true;
+        return z3::unknown;
+    }
+
     auto res {z3::unknown};
     unsigned rconsumption {0};
     while (config.rlimit == 0 || rconsumption < config.rlimit) {
@@ -610,9 +769,7 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
                 }
                 break;
             } else if (res == z3::unknown) {
-                if (config.log) {
-                    std::cout << "unknown from z3" << std::endl;
-                }
+                log("unknown from z3");
                 break;
             } else if (res == z3::sat) {
                 if (config.toggle_mode && !sat_mode) {
@@ -625,10 +782,7 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
                     solver.pop();
                 }
                 bool sat {true};
-                if (config.log) {
-                    std::cout << "candidate model:" << std::endl;
-                    std::cout << model << std::endl;
-                }
+                log("candidate model:\n" << model);
                 std::vector<std::pair<z3::expr, LemmaKind>> lemmas;
                 // check if the model can be lifted
                 for (const auto &f: frames) {
@@ -677,6 +831,10 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
                     lemmas = preprocess_lemmas(lemmas);
                 }
                 if (lemmas.empty()) {
+                    eia_n_lemmas(lemmas);
+                    lemmas = preprocess_lemmas(lemmas);
+                }
+                if (lemmas.empty()) {
                     prime_lemmas(lemmas);
                     induction_lemmas(lemmas);
                     interpolation_lemmas(lemmas);
@@ -718,6 +876,8 @@ void Swine::reset() {
     solver.reset();
     frames.clear();
     frames.emplace_back(ctx);
+    stats.reset();
+    common_base = 0;
 }
 
 void Swine::verify() const {
@@ -752,10 +912,7 @@ void Swine::brute_force() {
     BruteForce bf(*util, assertions, exps);
     if (bf.check_sat()) {
         std::cout << "sat via brute force" << std::endl;
-        if (config.log) {
-            std::cout << "candidate model:" << std::endl;
-            std::cout << solver.get_model() << std::endl;
-        }
+        log("candidate model:\n" << solver.get_model());
         for (const auto &f: frames) {
             for (const auto &[id,l]: f.lemmas) {
                 if (!get_value(l).is_true()) {

@@ -42,6 +42,8 @@ void print_help() {
     std::cout << "  --validate-unsat c    : validate UNSAT results by forcing exponents to values in {0,...,c}, c in IN" << std::endl;
     std::cout << "  --no-phasing          : disable phasing" << std::endl;
     std::cout << "  --get-lemmas          : print all lemmas that were used in the final proof if UNSAT is proven, or all lemmas if SAT is shown" << std::endl;
+    std::cout << "  --model               : force an algorithm that produces a model if SAT" << std::endl;
+    std::cout << "  --non-lazy            : use non-lazy variant of EIA_n solver (if applicable)" << std::endl;
     std::cout << "  --stats               : print statistics in the end" << std::endl;
     std::cout << "  --help                : print this text and exit" << std::endl;
     std::cout << "  --version             : print the SwInE version and exit" << std::endl;
@@ -68,14 +70,10 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
     ctx.check_error();
     Z3_ast_vector_inc_ref(ctx, v);
 
-    // Combine all parts into one expression; that allows for better preprocessing (inlining a variable from one
-    // expression in another one). In the future, this should probably be moved into the Swine::add logic.
     unsigned sz = Z3_ast_vector_size(ctx, v);
-    z3::expr combined = ctx.bool_val(true);
     for (unsigned i = 0; i < sz; ++i) {
-        combined = combined && z3::expr(ctx, Z3_ast_vector_get(ctx, v, i));
+        swine.add(z3::expr(ctx, Z3_ast_vector_get(ctx, v, i)));
     }
-    swine.add(combined);
     Z3_ast_vector_dec_ref(ctx, v);
 
     // Actually solve
@@ -87,9 +85,9 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
         std::cout << std::string(80, ' ');
     std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms" << std::endl;
 
-    // Don't print model if we're not logging and solving many files at once
-    if(res == z3::sat && (single || config.log || config.debug))
-        std::cout << swine.get_model() << std::endl;
+    // Don't print model if not explicitly requested, we're not logging, and are solving many files at once
+//    if(res == z3::sat && (single || config.model || config.log || config.debug))
+//        std::cout << swine.get_model() << std::endl;
     // Same for statistics, will be summarized instead after all are done
     if(config.statistics && (single || config.log || config.debug))
         std::cout << swine.get_stats() << std::endl;
@@ -131,6 +129,10 @@ int main(int argc, char *argv[]) {
                 config.log = true;
             } else if (boost::iequals(argv[arg], "--debug")) {
                 config.debug = true;
+            } else if (boost::iequals(argv[arg], "--model")) {
+                config.model = true;
+            } else if (boost::iequals(argv[arg], "--non-lazy")) {
+                config.non_lazy = true;
             } else if (boost::iequals(argv[arg], "--stats")) {
                 config.statistics = true;
             } else if (boost::iequals(argv[arg], "--version")) {

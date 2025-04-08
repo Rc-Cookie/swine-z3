@@ -1,6 +1,13 @@
 #include "preprocessor.h"
+#include "config.h"
+
+#define write_log(msg) _log(util.config, msg)
+#define write_debug(msg) _debug(util.config, msg)
 
 namespace swine {
+
+using namespace range_utils;
+using namespace std::views;
 
 Preprocessor::Preprocessor(Util &util): util(util), rewriter(util), constant_propagator(util) {}
 
@@ -48,7 +55,7 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
     if (advanced && util.config.is_active(PreprocKind::Inlining) && util.config.is_active(LemmaKind::EIA_n)) {
         last = log(term.simplify(), PreprocKind::Inlining, utils::inline_constants);
     }
-    auto cterm {do_cp(term)};
+    auto cterm {do_cp(last)};
     auto rterm {do_rw(cterm)};
     auto res {rterm};
     while (res.id() != last.id()) {
@@ -64,6 +71,27 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
     }
     if (advanced && util.config.is_active(LemmaKind::EIA_n)) {
         res = utils::replace_ite(res);
+
+        // Create variables for exponents that are not just a variable
+        while(true) {
+            const expr_set toBeSubstituted = utils::find(res, [](const z3::expr &e){ return utils::is_exp(e) && !utils::is_var(e.arg(1)); })
+                    | std::views::transform([](const z3::expr &exp){ return exp.arg(1); })
+                    | to<expr_set>();
+            if(toBeSubstituted.empty())
+                break;
+
+            write_log("Introducing " << toBeSubstituted.size() << " variable" << (toBeSubstituted.size() == 1 ? "" : "s") << " for terms in exponents");
+
+            std::vector<std::pair<z3::expr, z3::expr>> replacements = toBeSubstituted
+                    | std::views::values
+                    | std::views::transform([&](const z3::expr &e) -> std::pair<z3::expr, z3::expr> { return { e, util.new_variable() }; })
+                    | to<std::vector<std::pair<z3::expr, z3::expr>>>();
+            z3::expr constraints = replacements
+                    | std::views::transform([](const std::pair<z3::expr, z3::expr> &p) { return p.first == p.second; })
+                    | util.reduce_and();
+
+            res = utils::substitute_all(res, replacements) && constraints;
+        }
     }
     return res.simplify();
 }

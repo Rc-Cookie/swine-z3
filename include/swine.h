@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "stats.h"
+#include "eia_proj.h"
 
 #include <z3++.h>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -74,10 +75,17 @@ private:
     bool sat_mode {true};
     long long bound {2};
     z3::model model;
+    std::optional<boost::multiprecision::cpp_int> common_base;
+    std::unique_ptr<EIAProj> eia_proj;
+    z3::expr input;
 
     friend std::ostream& operator<<(std::ostream &s, const Swine &swine);
 
     z3::check_result check(z3::expr_vector assumptions);
+    z3::check_result check_with_z3(const z3::expr_vector &assumptions);
+    z3::check_result check_with_eia_n_proj(const z3::expr_vector &assumptions);
+    z3::check_result check_with_eia_n(const z3::expr_vector &assumptions);
+    z3::check_result check_with_lemmas(z3::expr_vector &assumptions);
     void base_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas);
     void exp_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas);
     void symmetry_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
@@ -94,11 +102,13 @@ private:
     std::optional<z3::expr> monotonicity_lemma(const EvaluatedExponential &e1, const EvaluatedExponential &e2);
     void monotonicity_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
     void prime_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
+    void eia_n_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
     void verify() const;
     void brute_force();
     void add_lemma(const z3::expr &lemma, const LemmaKind kind);
     std::vector<std::pair<z3::expr, LemmaKind>> preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
     z3::expr get_value(const z3::expr &exp) const;
+    bool update_common_base(const z3::expr &expr);
     void add_bounds();
 
 public:

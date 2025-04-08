@@ -356,7 +356,6 @@ namespace swine {
             // properly synced with stdout, making it hard to see where the error occurred.
             std::cout << "\x1b[1;31mLinearize() did not find anything to linearize with variables " << variables << " in " << expr << "\x1b[0m" << std::endl;
         }
-        else result = replace_ite(result);
 
         return result;
     }

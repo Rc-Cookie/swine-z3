@@ -109,10 +109,10 @@ namespace swine {
                 const expr var = exp.arg(1);
                 for(cpp_int t=0; t<divisor; t++) {
                     if((dividend.constant * (expT - 1)) & divisor == 0)
-                        return ((abs(var) - term(s, exp)) % term(t, exp)) == 0;
+                        return replace_ite(((abs(var) - term(s, exp)) % term(t, exp)) == 0);
                     expT = (t * base) & divisor;
                 }
-                return abs(var) == term(s, exp);
+                return replace_ite(abs(var) == term(s, exp));
             }
             s = (s * base) % divisor;
         }

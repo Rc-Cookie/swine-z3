@@ -88,7 +88,7 @@ namespace range_utils {
     }
 
     /**
-     * Shorthand for to<std::vector<Content>>(). A range operation that collects the contents of
+     * Shorthand for to&lt;std::vector&lt;Content>>(). A range operation that collects the contents of
      * the range into a std::vector.
      *
      * @tparam Content The content type for the resulting vector
@@ -99,7 +99,7 @@ namespace range_utils {
     }
 
     /**
-     * Shorthand for to<std::vector<std::pair<Key, Value>>>(). A range operation that collects the
+     * Shorthand for to&lt;std::vector&lt;std::pair&lt;Key, Value>>>(). A range operation that collects the
      * contents of the range (which must be convertible to pairs) into a std::vector.
      *
      * @tparam Key The type of "first" of the pairs to collect

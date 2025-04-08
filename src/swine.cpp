@@ -6,6 +6,7 @@
 #include "term_evaluator.h"
 #include "util.h"
 #include "term.h"
+#include "eia_nonlazy.h"
 
 #include <assert.h>
 #include <limits>
@@ -625,16 +626,20 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
 
     z3::check_result res {z3::unknown};
     if (eia_n && common_base && !*common_base) {
-        std::cout << ": Z3     ";
+        stats.algorithm = Algorithm::Z3;
+//        std::cout << ": Z3     ";
         res = check_with_z3(assumptions);
     } else if (!eia_n || !common_base || config.model) {
-        std::cout << ": Lemmas ";
+        stats.algorithm = Algorithm::Lemmas;
+//        std::cout << ": Lemmas ";
         res = check_with_lemmas(assumptions);
     } else if (config.non_lazy) {
-        std::cout << ": EIA    ";
+        stats.algorithm = Algorithm::EIA;
+//        std::cout << ": EIA    ";
         res = check_with_eia_n(assumptions);
     } else {
-        std::cout << ": EIAProj";
+        stats.algorithm = Algorithm::EIAProj;
+//        std::cout << ": EIAProj";
         res = check_with_eia_n_proj(assumptions);
     }
     return res;
@@ -651,8 +656,7 @@ z3::check_result Swine::check_with_z3(const z3::expr_vector &assumptions) {
 }
 
 z3::check_result Swine::check_with_eia_n(const z3::expr_vector &assumptions) {
-//    return EIANSolver(*util).check((assumptions | rangify | util->reduce_and()) && (solver.assertions() | rangify | util->reduce_and()));
-    return z3::unknown;
+    return EIANSolver(*util).check((assumptions | rangify | util->reduce_and()) && (solver.assertions() | rangify | util->reduce_and()));
 }
 
 z3::check_result Swine::check_with_eia_n_proj(const z3::expr_vector &assumptions) {
@@ -943,6 +947,10 @@ const Statistics &Swine::get_stats() const {
 
 z3::solver& Swine::get_solver() {
     return solver;
+}
+
+bool Swine::has_model() const {
+    return algorithm::produces_model(stats.algorithm);
 }
 
 z3::model Swine::get_model() const {

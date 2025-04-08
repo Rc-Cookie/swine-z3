@@ -119,6 +119,7 @@ public:
     z3::check_result check();
     void push();
     void pop();
+    bool has_model() const;
     z3::model get_model() const;
     void reset();
     z3::context& get_ctx();

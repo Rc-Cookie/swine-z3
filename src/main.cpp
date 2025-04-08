@@ -86,7 +86,7 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
     std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms" << std::endl;
 
     // Don't print model if not explicitly requested, we're not logging, and are solving many files at once
-    if(res == z3::sat && (single || config.model || config.log || config.debug))
+    if(res == z3::sat && swine.has_model() && (single || config.model || config.log || config.debug))
         std::cout << swine.get_model() << std::endl;
     // Same for statistics, will be summarized instead after all are done
     if(config.statistics && (single || config.log || config.debug))

@@ -91,6 +91,8 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/src/divisibility.cpp"
     "${PROJECT_SOURCE_DIR}/include/eia_proj.h"
     "${PROJECT_SOURCE_DIR}/src/eia_proj.cpp"
+    "${PROJECT_SOURCE_DIR}/include/eia_nonlazy.h"
+    "${PROJECT_SOURCE_DIR}/src/eia_nonlazy.cpp"
     "${PROJECT_SOURCE_DIR}/include/range_utils.h"
     "${PROJECT_SOURCE_DIR}/include/version.h"
     "${PROJECT_SOURCE_DIR}/src/version.cpp"

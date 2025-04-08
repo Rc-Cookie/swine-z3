@@ -82,7 +82,7 @@ namespace swine {
             }
 
             formula = linearize(projected, remainingVars);
-//            std::cout << "Linearized: " << Util::to_string(formula) << std::endl;
+            log("Linearized: " << formula);
 
             if(!approximation.eval(formula, true).is_true()) {
                 log("Approximation not a model of linearized formula after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));

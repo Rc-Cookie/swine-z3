@@ -52,12 +52,12 @@ void print_help() {
     std::cout << std::endl;
 }
 
-std::pair<z3::check_result, Statistics> run_file(Config &config, std::string file, bool single) {
+std::pair<z3::check_result, Statistics> run_file(Config &config, std::string file, std::string name, bool single) {
     // Print file name first so that it is clear what's currently calculating. When not logging anything in between,
     // sat/unsat/unknown will be printed in the same line, so no std::endl.
     if(config.log || config.debug)
-        std::cout << file << std::endl;
-    else std::cout << file << std::string(file.length() < 80 ? 80 - file.length() : 0, ' ') << std::flush;
+        std::cout << name << std::endl;
+    else std::cout << name << std::string(name.length() < 80 ? 80 - name.length() : 0, ' ') << std::flush;
 
     Timer timer;
 
@@ -86,8 +86,8 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
     std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms" << std::endl;
 
     // Don't print model if not explicitly requested, we're not logging, and are solving many files at once
-//    if(res == z3::sat && (single || config.model || config.log || config.debug))
-//        std::cout << swine.get_model() << std::endl;
+    if(res == z3::sat && (single || config.model || config.log || config.debug))
+        std::cout << swine.get_model() << std::endl;
     // Same for statistics, will be summarized instead after all are done
     if(config.statistics && (single || config.log || config.debug))
         std::cout << swine.get_stats() << std::endl;
@@ -189,12 +189,13 @@ int main(int argc, char *argv[]) {
                 continue;
 
             ++i;
-            std::string name = fs::relative(e).string();
+            std::string file = fs::relative(e).string();
             if(e.path().filename().string().starts_with('.'))
                 continue;
+            std::string name = fs::relative(e, *input).string();
 
             Timer timer;
-            const auto [res, stats] = run_file(config, name, false);
+            const auto [res, stats] = run_file(config, file, name, false);
             Timer::duration duration = timer;
             totalDuration += duration;
             results.push_back({ name, res, duration });
@@ -209,7 +210,7 @@ int main(int argc, char *argv[]) {
     }
     else if(fs::is_regular_file(*input)) {
         Timer timer;
-        const auto [_, stats] = run_file(config, *input, true);
+        const auto [_, stats] = run_file(config, *input, fs::path(*input).filename().string(), true);
         totalDuration += timer;
     }
     else throw z3::exception("File not found / not a file or a directory");

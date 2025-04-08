@@ -12,10 +12,26 @@ namespace swine {
 
     PowerComp::PowerComp(const cpp_int &base, const cpp_int &a, const expr &x, const cpp_int &b, Kind kind):
         base(base), a(a), b(b), x(x), y({}), kind(kind) {
+        if((kind == Kind::Equal || kind == Kind::NotEqual) && b < 0) {
+            this->a = -a;
+            this->b = -b;
+        }
     }
 
     PowerComp::PowerComp(const cpp_int &base, const cpp_int &a, const expr &x, const cpp_int &b, const expr &y, Kind kind):
         base(base), a(a), b(b), x(x), y(y), kind(kind) {
+        if(kind == Kind::Equal || kind == Kind::NotEqual) {
+            if(b < 0) {
+                this->a = -a;
+                this->b = -b;
+            }
+            // b >= 0
+            if(this->a > this->b) {
+                swap(this->a, this->b);
+                this->x = y;
+                this->y = x;
+            }
+        }
     }
 
     expr PowerComp::a_expr() const {
@@ -291,8 +307,6 @@ namespace swine {
 
 
     z3::expr linearize(const z3::expr &expr, const std::vector<z3::expr> &variables) {
-
-//        std::cout << "Linearizing " << to_string(expr) << std::endl;
 
         expr_set not_in_power_comp;
         expr_set original_exprs;

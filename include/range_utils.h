@@ -88,6 +88,29 @@ namespace range_utils {
     }
 
     /**
+     * Shorthand for to<std::vector<Content>>(). A range operation that collects the contents of
+     * the range into a std::vector.
+     *
+     * @tparam Content The content type for the resulting vector
+     */
+    template <typename Content>
+    auto to_vec() {
+        return collector<std::vector<Content>>{};
+    }
+
+    /**
+     * Shorthand for to<std::vector<std::pair<Key, Value>>>(). A range operation that collects the
+     * contents of the range (which must be convertible to pairs) into a std::vector.
+     *
+     * @tparam Key The type of "first" of the pairs to collect
+     * @tparam Value The type of "second" of the pairs to collect, defaults to the same type as "Key"
+     */
+    template <typename Key, typename Value = Key>
+    auto to_pairs() {
+        return collector<std::vector<std::pair<Key, Value>>>{};
+    }
+
+    /**
      * A range operation that selects the first element of the range and discards the rest. If
      * the range is empty, it returns an empty optional.
      * */

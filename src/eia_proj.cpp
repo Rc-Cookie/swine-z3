@@ -30,7 +30,7 @@ namespace swine {
             debug("Remaining formula: " << formula);
 
             const expr_set remainingVarsAndExps = variables_in(formula, true, true);
-            const std::vector<expr> remainingVars = remainingVarsAndExps | values | filter(is_var) | to<std::vector<expr>>();
+            const std::vector<expr> remainingVars = remainingVarsAndExps | values | filter(is_var) | to_vec<expr>();
 //            util.stats.timings.eia_n_remove_unused += timer.get_and_reset();
 
             if(remainingVars.size() == remainingVarsAndExps.size()) {
@@ -49,7 +49,7 @@ namespace swine {
 
                 const std::vector<Z3_app> onlyLinearly = remainingVars
                         | filter([&](const expr &v){ return !nonLinear.contains(v.id()); })
-                        | to<std::vector<Z3_app>>();
+                        | to_vec<Z3_app>();
                 debug(onlyLinearly.size() << " variable" << (onlyLinearly.size() == 1 ? "" : "s") << " only occurs linearly -> eliminating with MBP");
 
                 expr projected = liaProject(formula, onlyLinearly, approximation);
@@ -99,7 +99,7 @@ namespace swine {
         // G <- set of non-simple divisibilities in phi
         const std::vector<Divisibility> divisibilities = Divisibility::all_in(formula)
                 | filter([](const Divisibility &d){ return !d.is_simple(); })
-                | to<std::vector<Divisibility>>();
+                | to_vec<Divisibility>();
 
         if(divisibilities.empty())
             return { util.top(), formula };
@@ -126,7 +126,7 @@ namespace swine {
         const std::vector<std::pair<expr, expr>> replacements = varsAndExps
                 | values
                 | transform([&](const expr &t) -> std::pair<expr,expr> { return { t, remainders.at(t.id()) }; })
-                | to<std::vector<std::pair<expr, expr>>>();
+                | to_pairs<expr>();
 
         // phi[r(a) / a | a in G]
         expr simplified = formula;
@@ -173,7 +173,7 @@ namespace swine {
         // I <- set of inequalities in phi outside PowerComp in which x appears as a power
         const std::vector<Comparison> problematicComps = find_values_in_bools<Comparison>(formula, Comparison::try_parse)
                 | filter([&](const Comparison &c){ return c.term.variables.contains(varInPower.id()) && !c.is_in_power_comp(); })
-                | to<std::vector<Comparison>>();
+                | to_vec<Comparison>();
 
         debug("Inequalities outside PowerComp with " << varInPower << " (#" << problematicComps.size() << "):");
         for(const Comparison &c : problematicComps)
@@ -215,7 +215,7 @@ namespace swine {
                 std::vector<expr> otherVars = similarComp.term.const_vars()
                         | values
                         | filter([&](auto &v){ return v.id() != variable.id(); })
-                        | to<std::vector<expr>>();
+                        | to_vec<expr>();
                 // Arbitrary, but consistent ordering
                 std::sort(otherVars.begin(), otherVars.end(), [](auto &a, auto &b){ return a.to_string() < b.to_string(); });
 

@@ -85,7 +85,7 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
             std::vector<std::pair<z3::expr, z3::expr>> replacements = toBeSubstituted
                     | std::views::values
                     | std::views::transform([&](const z3::expr &e) -> std::pair<z3::expr, z3::expr> { return { e, util.new_variable() }; })
-                    | to<std::vector<std::pair<z3::expr, z3::expr>>>();
+                    | to_pairs<z3::expr>();
             z3::expr constraints = replacements
                     | std::views::transform([](const std::pair<z3::expr, z3::expr> &p) { return p.first == p.second; })
                     | util.reduce_and();

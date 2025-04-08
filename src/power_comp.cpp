@@ -211,7 +211,7 @@ namespace swine {
         if(varCount != 2 || (comparison.term.constant != 0 && (comparison.kind != Comparison::Kind::Less || comparison.term.constant != -1)))
             return { };
 
-        const auto var_sum = comparison.term.var_sum() | to<std::vector<std::pair<cpp_int, expr>>>();
+        const auto var_sum = comparison.term.var_sum() | to_pairs<cpp_int, expr>();
         const auto &[a,ex] = var_sum.at(0);
         const auto &[b,ey] = var_sum.at(1);
 

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <unordered_set>
 #include <boost/multiprecision/cpp_int.hpp>
+#include "algorithm.h"
 
 namespace swine {
 
@@ -50,30 +51,6 @@ namespace swine {
     };
 
     /**
-     * Possible solving algorithms.
-     */
-    enum class Algorithm {
-        /** Default value */
-        None,
-        /** Just regular Z3 - the formula did not contain any exp() expressions (after preprocessing) */
-        Z3,
-        /** Incremental lemma generation */
-        Lemmas,
-        /** Approximation-based complete algorithm for the EIA_n fragment */
-        EIAProj,
-        /** Non-lazy version of the complete algorithm for the EIA_n fragment (with some feasibility optimizations) */
-        EIA
-    };
-
-    namespace algorithm {
-        /** Returns the name of the enum constant. */
-        std::string str(const Algorithm a);
-
-        /** Whether the given algorithm is capable of producing a model, if it proves a formula satisfiable. */
-        bool produces_model(const Algorithm a);
-    }
-
-    /**
      * Tracks statistics about the SwInE solver.
      */
     struct Statistics {
@@ -98,14 +75,12 @@ namespace swine {
         unsigned int num_assertions {0};
         /** Whether any exp() expression had a non-constant term as base, after preprocessing. */
         bool non_constant_base {false};
-        /** Whether any exp() expression had a non-constant term as base, after preprocessing. */
-        Algorithm algorithm {Algorithm::None};
+        /** The algorithms used for solving. */
+        std::optional<Algorithm> algorithm {};
 
         /** Resets all counters to 0 / their respective default state. */
         void reset();
     };
-
-    std::ostream& operator<<(std::ostream &s, const Algorithm algorithm);
 
     std::ostream& operator<<(std::ostream &s, const Statistics &stats);
 }

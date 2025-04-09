@@ -2,6 +2,7 @@
 
 #include "lemma_kind.h"
 #include "preproc_kind.h"
+#include "algorithm.h"
 
 #include <unordered_set>
 
@@ -17,6 +18,7 @@ private:
 
     std::unordered_set<LemmaKind> active_lemma_kinds {lemma_kind::values};
     std::unordered_set<PreprocKind> active_preprocessings{preproc_kind::values};
+    std::unordered_set<Algorithm> active_algorithms{algorithm::values};
 
 public:
 
@@ -38,6 +40,14 @@ public:
     void deactivate(const PreprocKind k);
 
     bool is_active(const PreprocKind k) const;
+
+    void deactivate(const Algorithm a);
+
+    void force(const Algorithm a);
+
+    bool is_active(const Algorithm a) const;
+
+    const std::unordered_set<Algorithm> &get_algorithms() const;
 
     void set_rlimit(unsigned rlimit);
 

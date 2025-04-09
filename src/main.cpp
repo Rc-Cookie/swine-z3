@@ -2,6 +2,7 @@
 #include "version.h"
 #include "lemma_kind.h"
 #include "preproc_kind.h"
+#include "algorithm.h"
 #include "config.h"
 
 #include <boost/algorithm/string.hpp>
@@ -38,6 +39,12 @@ void print_help() {
         const auto ws {length - str.length()};
         std::cout << str << std::string(ws, ' ') << " : disable " << k << std::endl;
     }
+    for (const auto a: algorithm::values) {
+        const auto str {std::string("  --no-") + algorithm::str(a)};
+        const auto ws {length - str.length()};
+        std::cout << str << std::string(ws, ' ') << " : disable " << a << " algorithm" << std::endl;
+    }
+    std::cout << "  --algo a              : force the algorithm a" << std::endl;
     std::cout << "  --validate-sat        : validate SAT results by evaluating the input w.r.t. solution" << std::endl;
     std::cout << "  --validate-unsat c    : validate UNSAT results by forcing exponents to values in {0,...,c}, c in IN" << std::endl;
     std::cout << "  --no-phasing          : disable phasing" << std::endl;
@@ -57,7 +64,7 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
     // sat/unsat/unknown will be printed in the same line, so no std::endl.
     if(config.log || config.debug)
         std::cout << name << std::endl;
-    else std::cout << name << std::string(name.length() < 80 ? 80 - name.length() : 0, ' ') << std::flush;
+    else std::cout << name << std::string(name.length() < 70 ? 70 - name.length() : 0, ' ') << std::flush;
 
     Timer timer;
 
@@ -82,8 +89,8 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
     // Print result and duration
     Timer::duration duration = timer;
     if(config.log || config.debug)
-        std::cout << std::string(80, ' ');
-    std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms" << std::endl;
+        std::cout << std::string(70, ' ');
+    std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms with " << (swine.get_stats().algorithm ? algorithm::str(*swine.get_stats().algorithm) : "preprocessing only") << std::endl;
 
     // Don't print model if not explicitly requested, we're not logging, and are solving many files at once
     if(res == z3::sat && swine.has_model() && (single || config.model || config.log || config.debug))
@@ -162,6 +169,28 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 if (!found) {
+                    for (const auto a: algorithm::values) {
+                        if (boost::iequals(argv[arg], "--no-" + algorithm::str(a))) {
+                            config.deactivate(a);
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    argument_parsing_failed(argv[arg]);
+                }
+            } else if (boost::iequals(argv[arg], "--algo")) {
+                const auto name {get_next()};
+                bool found {false};
+                for (const auto a: algorithm::values) {
+                    if (boost::iequals(name, algorithm::str(a))) {
+                        config.force(a);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
                     argument_parsing_failed(argv[arg]);
                 }
             } else if (!input) {
@@ -205,7 +234,7 @@ int main(int argc, char *argv[]) {
         if(config.log || config.debug) {
             std::cout << "\n-------- Summary --------" << std::endl;
             for(const auto &[n,r,ms] : results)
-                std::cout << n << std::string(n.length() < 80 ? 80 - n.length() : 0, ' ') << ": " << (r == z3::sat ? "sat    " : r == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(ms).count() << " ms" << std::endl;
+                std::cout << n << std::string(n.length() < 70 ? 70 - n.length() : 0, ' ') << ": " << (r == z3::sat ? "sat    " : r == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(ms).count() << " ms" << std::endl;
         }
     }
     else if(fs::is_regular_file(*input)) {

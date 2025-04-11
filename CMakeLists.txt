@@ -96,6 +96,7 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/include/algorithm.h"
     "${PROJECT_SOURCE_DIR}/src/algorithm.cpp"
     "${PROJECT_SOURCE_DIR}/include/range_utils.h"
+    "${PROJECT_SOURCE_DIR}/src/range_utils.cpp"
     "${PROJECT_SOURCE_DIR}/include/version.h"
     "${PROJECT_SOURCE_DIR}/src/version.cpp"
 )

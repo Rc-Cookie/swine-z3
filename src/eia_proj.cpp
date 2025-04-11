@@ -18,7 +18,7 @@ namespace swine {
     }
 
 
-    std::pair<z3::expr, bool> EIAProj::evaluateCase(const model &approximation) {
+    std::pair<expr, check_result> EIAProj::evaluateCase(const model &approximation) {
 
         expr formula = original_formula;
 
@@ -36,7 +36,7 @@ namespace swine {
             if(remainingVars.size() == remainingVarsAndExps.size()) {
                 log("Fully linearized " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
                 // All linear, and approximation is already a model for linear terms
-                return { /* Not the actual promises, but irrelevant */ util.top(), true };
+                return { /* Not the actual promises, but irrelevant */ util.top(), sat };
             }
 
             // ELSE IF some x in X only appears linearly in phi
@@ -60,7 +60,7 @@ namespace swine {
                 if(!approximation.eval(simplified, true).is_true()) {
                     log("Approximation not a model SimplifyDiv projection after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
 //                    util.stats.timings.eia_n_remove_linear += timer.get_and_reset();
-                    return { premise && simplified != projected, false };
+                    return { premise && simplified != projected, unsat };
                 }
                 formula = simplified;
 //                util.stats.timings.eia_n_remove_linear += timer.get_and_reset();
@@ -78,7 +78,7 @@ namespace swine {
             if(!approximation.eval(projected, true).is_true()) {
                 log("Approximation not a model of SemCover projection after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
 //                util.stats.timings.eia_n_sem_cover += timer.get_and_reset();
-                return { premise && projected != formula, false };
+                return { premise && projected != formula, unsat };
             }
 
             formula = linearize(projected, remainingVars);
@@ -87,7 +87,7 @@ namespace swine {
             if(!approximation.eval(formula, true).is_true()) {
                 log("Approximation not a model of linearized formula after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
 //                util.stats.timings.eia_n_sem_cover += timer.get_and_reset();
-                return { projected != formula, false };
+                return { projected != formula, unsat };
             }
 //            util.stats.timings.eia_n_sem_cover += timer.get_and_reset();
         }

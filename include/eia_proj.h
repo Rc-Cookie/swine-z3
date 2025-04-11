@@ -44,7 +44,7 @@ namespace swine {
          * @return A pair [premise, projection] where premise combines the premises made because of the approximation,
          *         and projection is the result of the projection, either true for "sat" or false for "unsat"
          */
-        std::pair<z3::expr, bool> evaluateCase(const z3::model &approximation);
+        std::pair<z3::expr, z3::check_result> evaluateCase(const z3::model &approximation);
 
     private:
 

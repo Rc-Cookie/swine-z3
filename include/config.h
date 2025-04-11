@@ -28,7 +28,6 @@ public:
     bool statistics {false};
     bool get_lemmas {false};
     bool model {false};
-    bool non_lazy {false};
     bool debug {false};
     unsigned rlimit {0};
     bool toggle_mode {true};

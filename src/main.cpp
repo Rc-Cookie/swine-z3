@@ -50,7 +50,6 @@ void print_help() {
     std::cout << "  --no-phasing          : disable phasing" << std::endl;
     std::cout << "  --get-lemmas          : print all lemmas that were used in the final proof if UNSAT is proven, or all lemmas if SAT is shown" << std::endl;
     std::cout << "  --model               : force an algorithm that produces a model if SAT" << std::endl;
-    std::cout << "  --non-lazy            : use non-lazy variant of EIA_n solver (if applicable)" << std::endl;
     std::cout << "  --stats               : print statistics in the end" << std::endl;
     std::cout << "  --help                : print this text and exit" << std::endl;
     std::cout << "  --version             : print the SwInE version and exit" << std::endl;
@@ -138,8 +137,6 @@ int main(int argc, char *argv[]) {
                 config.debug = true;
             } else if (boost::iequals(argv[arg], "--model")) {
                 config.model = true;
-            } else if (boost::iequals(argv[arg], "--non-lazy")) {
-                config.non_lazy = true;
             } else if (boost::iequals(argv[arg], "--stats")) {
                 config.statistics = true;
             } else if (boost::iequals(argv[arg], "--version")) {

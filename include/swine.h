@@ -29,10 +29,11 @@ private:
         std::vector<std::shared_ptr<ExpGroup>> exp_groups;
         // mapping from assumption literals to the corresponding formulas for unsat cores
         std::vector<std::pair<z3::expr, z3::expr>> assumptions;
+        z3::expr_vector assertions;
         // mapping from preprocessed to original assertions
         std::vector<std::pair<z3::expr, z3::expr>> preprocessed_assertions;
         std::unordered_map<unsigned, LemmaKind> lemma_kinds;
-        std::unordered_map<unsigned, z3::expr> lemmas;
+        expr_set lemmas;
         std::unordered_map<unsigned, z3::expr_vector> bounding_lemmas;
         bool assert_failed {false};
 
@@ -77,15 +78,15 @@ private:
     z3::model model;
     std::optional<boost::multiprecision::cpp_int> common_base;
     std::unique_ptr<EIAProj> eia_proj;
-    z3::expr input;
 
     friend std::ostream& operator<<(std::ostream &s, const Swine &swine);
 
     z3::check_result check(z3::expr_vector assumptions);
-    z3::check_result check_with_z3(const z3::expr_vector &assumptions);
-    z3::check_result check_with_eia_n_proj(const z3::expr_vector &assumptions);
-    z3::check_result check_with_eia_n(const z3::expr_vector &assumptions);
-    z3::check_result check_with_lemmas(z3::expr_vector &assumptions);
+    z3::check_result check(Algorithm algorithm);
+    z3::check_result check_with_z3();
+    z3::check_result check_with_eia_n_proj();
+    z3::check_result check_with_eia_n();
+    z3::check_result check_with_lemmas();
     void base_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas);
     void exp_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas);
     void symmetry_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);

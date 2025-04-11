@@ -165,7 +165,7 @@ namespace range_utils {
      * @param ident A supplied for a default value if the range is empty
      */
     template <typename T>
-    ident_reduction<T> reduce_or_get(const std::function<const T(const T &a, const T &b)> reduction, const std::function<const T()> &ident) {
+    constexpr ident_reduction<T> reduce_or_get(const std::function<const T(const T &a, const T &b)> reduction, const std::function<const T()> &ident) {
         return { .reduction = reduction, .ident = ident };
     }
 
@@ -180,7 +180,7 @@ namespace range_utils {
      * @param ident The default value to return if the range is empty
      */
     template <typename T>
-    ident_reduction<T> reduce(const std::function<const T(const T &a, const T &b)> reduction, const T &ident) {
+    constexpr ident_reduction<T> reduce(const std::function<const T(const T &a, const T &b)> reduction, const T &ident) {
         return reduce_or_get<T>(reduction, [&](){ return ident; });
     }
 
@@ -195,7 +195,7 @@ namespace range_utils {
      * @param ident The default value to return if the range is empty
      */
     template <typename T>
-    ident_reduction<T> reduce(const std::function<const T(const T &a, const T &b)> reduction, T &&ident) {
+    constexpr ident_reduction<T> reduce(const std::function<const T(const T &a, const T &b)> reduction, T &&ident) {
         return reduce_or_get<T>(reduction, [i = std::move(ident)](){ return i; });
     }
 
@@ -207,7 +207,7 @@ namespace range_utils {
      * @param less_than A custom implementation of "<", otherwise the "<" operator will be used
      */
     template <typename T>
-    auto min(std::function<bool(const T& a, const T& b)>&& less_than = _less<T>) {
+    constexpr auto min(std::function<bool(const T& a, const T& b)>&& less_than = _less<T>) {
         return reduce<T>([le = std::move(less_than)](auto& a, auto& b) { return le(a, b) ? a : b; });
     }
 
@@ -218,7 +218,7 @@ namespace range_utils {
      * @tparam T The type of ranges to operate on
      */
     template <typename T>
-    auto min(std::function<bool(const T& a, const T& b)>& less_than) {
+    constexpr auto min(std::function<bool(const T& a, const T& b)>& less_than) {
         return reduce<T>([&](auto& a, auto& b) { return less_than(a, b) ? a : b; });
     }
 
@@ -232,7 +232,7 @@ namespace range_utils {
      *                  the maximum.
      */
     template <typename T>
-    auto max(std::function<bool(const T& a, const T& b)>&& less_than = _less<T>) {
+    constexpr auto max(std::function<bool(const T& a, const T& b)>&& less_than = _less<T>) {
         return reduce<T>([le = std::move(less_than)](auto& a, auto& b) { return le(a, b) ? b : a; });
     }
 
@@ -243,7 +243,7 @@ namespace range_utils {
      * @tparam T The type of ranges to operate on
      */
     template <typename T>
-    auto max(std::function<bool(const T& a, const T& b)>& less_than) {
+    constexpr auto max(std::function<bool(const T& a, const T& b)>& less_than) {
         return reduce<T>([&](auto& a, auto& b) { return less_than(a, b) ? b : a; });
     }
 
@@ -255,7 +255,7 @@ namespace range_utils {
      * @param zero The value to return if the range is empty
      */
     template <typename T>
-    auto sum(const T &zero) {
+    constexpr auto sum(const T &zero) {
         return reduce<T>(_plus<T>, zero);
     }
 
@@ -267,7 +267,7 @@ namespace range_utils {
      * @param zero The value to return if the range is empty, by default "0".
      */
     template <typename T>
-    auto sum(T && zero = 0) {
+    constexpr auto sum(T && zero = 0) {
         return reduce<T>(_plus<T>, zero);
     }
 
@@ -279,7 +279,7 @@ namespace range_utils {
      * @param one The value to return if the range is empty
      */
     template <typename T>
-    auto product(const T &one) {
+    constexpr auto product(const T &one) {
         return reduce<T>(_mult<T>, one);
     }
 
@@ -291,7 +291,7 @@ namespace range_utils {
      * @param one The value to return if the range is empty, by default "1"
      */
     template <typename T>
-    auto product(T && one = 1) {
+    constexpr auto product(T && one = 1) {
         return reduce<T>(_mult<T>, one);
     }
 
@@ -302,7 +302,7 @@ namespace range_utils {
      * @tparam V The kinds of values to map to
      * @param mapper The function to apply to each element from the range
      */
-    template<typename K, typename V>
+    template <typename K, typename V>
     constexpr auto map_to(V(&& mapper)(K &)) {
         return std::views::transform([m = std::move(mapper)](auto k) -> std::pair<K,V> { return { k, m(k) }; });
     }
@@ -314,7 +314,7 @@ namespace range_utils {
      * @tparam V The kinds of values to map by
      * @param mapper The function to apply to each element from the range
      */
-    template<typename K, typename V>
+    template <typename K, typename V>
     constexpr auto map_by(K(&& mapper)(V &)) {
         return std::views::transform([m = std::move(mapper)](auto v) -> std::pair<K,V> { return { m(v), v }; });
     }
@@ -328,8 +328,17 @@ namespace range_utils {
      * @param key_mapper The function to apply to each element from the range to obtain the key for it
      * @param value_mapper The function to apply to each element from the range to obtain the value for it
      */
-    template<typename I, typename K, typename V>
+    template <typename I, typename K, typename V>
     constexpr auto map(K(&& key_mapper)(I &), V(&& value_mapper)(I &)) {
         return std::views::transform([k = std::move(key_mapper), v = std::move(value_mapper)](auto i) -> std::pair<K,V> { return { k(i), v(i) }; });
     }
+
+    /**
+     * A special kind of string reduction, concatenating all elements from the range, optionally with a specified
+     * delimiter between each pair. If the range is empty, the result will be an empty string.
+     *
+     * @param delimiter The delimiter to place between each pair of subsequent elements from the range, defaults
+     *                  to the empty string
+     */
+    ident_reduction<std::string> join(const std::string &delimiter = "");
 }

@@ -16,12 +16,12 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
         bool done {false};
         const z3::expr res {f(term)};
         if ((util.config.log || util.config.debug) && res.id() != term.id()) {
-            if (!done) {
-                std::cout << "preprocessing" << std::endl;
-                std::cout << "original term:" << std::endl;
-                std::cout << term << std::endl;
-                done = true;
-            }
+//            if (!done) {
+//                std::cout << "preprocessing" << std::endl;
+//                std::cout << "original term:" << std::endl;
+//                std::cout << term << std::endl;
+//                done = true;
+//            }
             std::cout << kind << ":" << std::endl;
             std::cout << res << std::endl;
         }
@@ -51,6 +51,7 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
             }
         }
     };
+    write_log("preprocessing:\n" << term);
     auto last {term};
     if (advanced && util.config.is_active(PreprocKind::Inlining) && util.config.is_active(LemmaKind::EIA_n)) {
         last = log(term.simplify(), PreprocKind::Inlining, utils::inline_constants);

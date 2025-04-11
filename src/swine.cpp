@@ -764,23 +764,6 @@ z3::check_result Swine::check_with_eia_n_proj() {
 
 z3::check_result Swine::check_with_lemmas() {
     z3::expr_vector assumptions{ctx};
-    try {
-        frames.back().exp_ids.clear();
-        frames.back().exps.resize(0);
-        frames.back().exp_groups.clear();
-        stats.non_constant_base = true;
-        for (const auto &g: exp_finder->find_exps(solver.assertions() | rangify | util->reduce_and())) {
-            if (frames.back().exp_ids.emplace(g.orig().id()).second) {
-                frames.back().exps.push_back(g.orig());
-                frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));
-                stats.non_constant_base |= !g.has_ground_base();
-                compute_bounding_lemmas(g);
-            }
-        }
-    } catch (const ExponentOverflow &e) {
-        frames.back().assert_failed = true;
-        return z3::unknown;
-    }
 
     auto res {z3::unknown};
     unsigned rconsumption {0};

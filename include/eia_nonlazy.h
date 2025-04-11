@@ -94,9 +94,10 @@ namespace swine {
          * interpret exp() arbitrarily).
          *
          * @param kind The kind of formula in context. If infeasible, a message "{kind} infeasible" will be logged
+         * @param stat Duration reference to increment by the duration of the function call
          * @return Whether the current solver state is feasible
          */
-        bool feasible(const std::string &kind);
+        bool feasible(const std::string &kind, Timer::duration &stat);
 
         /**
          * Tests whether the given formula is feasible in the current solver state, meaning that Z3 finds it
@@ -105,9 +106,10 @@ namespace swine {
          * @param formula The formula to check for feasibility, together with all the formulas already added
          *                to the solver
          * @param kind The kind of formula in context. If infeasible, a message "{kind} infeasible" will be logged
+         * @param stat Duration reference to increment by the duration of the function call
          * @return Whether the formula is feasible in the current solver context
          */
-        bool feasible(const z3::expr &formula, const std::string &kind);
+        bool feasible(const z3::expr &formula, const std::string &kind, Timer::duration &stat);
 
         /**
          * If feasibility checking for intermediate SemCover results is enabled, the expression is only added

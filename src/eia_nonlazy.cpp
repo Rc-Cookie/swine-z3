@@ -83,7 +83,7 @@ namespace swine {
             if(remainingVars.size() == remainingVarsAndExps.size()) {
                 // No exp() -> fully linearized -> solve directly with Z3 (most likely faster than solving via QE)
                 branches++;
-                if(!feasible(formula, "Branch"))
+                if(!feasible(formula, "Branch", util.stats.timings.eia_iter_qe))
                     continue;
                 log("sat of linear formula in " << branches << " branch" << (branches == 1 ? "" : "es") << " and " << iterations << " iterations with " << todo.size() << " formula" << (todo.size() == 1 ? "" : "s") << " still queued");
                 return sat;
@@ -120,6 +120,8 @@ namespace swine {
 
     void EIANSolver::presQE(const expr &formula, const std::vector<expr> &vars) {
 
+        Timer timer;
+
         // Convert to Z3 vector
         expr_vector vars_vec = { util.ctx };
         for(const z3::expr &v : vars)
@@ -142,7 +144,9 @@ namespace swine {
             expr qfFree = substitute_all(qeRes[i].as_expr(), varsToExps);
             debug("With variables:\n" << qeRes[i].as_expr());
             debug("With exps():\n" << qfFree);
+            util.stats.timings.eia_iter_qe += timer;
             simplifyDiv(qfFree);
+            timer.reset();
         }
     }
 
@@ -189,12 +193,15 @@ namespace swine {
             return;
         }
 
+        Timer timer;
+
         // G <- set of non-simple divisibilities in phi
         const std::vector<Divisibility> divisibilities = Divisibility::all_in(formula)
                 | filter([](const Divisibility &d){ return !d.is_simple(); })
                 | to_vec<Divisibility>();
 
         if(divisibilities.empty()) {
+            util.stats.timings.eia_iter_simplify_div += timer;
             todo.emplace_back(formula);
             return;
         }
@@ -218,10 +225,14 @@ namespace swine {
             precomputedRemainders.emplace_back(util.term(r));
 
         addAllRemainders(formula, divisibilities, 0, precomputedRemainders, lcmExpr, remainderBuffer);
+
+        util.stats.timings.eia_iter_simplify_div += timer;
     }
 
-    bool EIANSolver::feasible(const std::string &kind) {
+    bool EIANSolver::feasible(const std::string &kind, Timer::duration &stat) {
+        Timer timer;
         check_result res = solver.check();
+        stat += timer;
         if(res == sat)
             return true;
         if(res == unknown)
@@ -230,17 +241,21 @@ namespace swine {
         return false;
     }
 
-    bool EIANSolver::feasible(const z3::expr &formula, const std::string &kind) {
+    bool EIANSolver::feasible(const z3::expr &formula, const std::string &kind, Timer::duration &stat) {
+        Timer timer;
         solver.push();
         solver.add(formula);
-        bool res = feasible(kind);
+        stat += timer;
+        bool res = feasible(kind, stat);
+        timer.reset();
         solver.pop();
+        stat += timer;
         return res;
     }
 
     void EIANSolver::maybeEmplace(std::vector<expr> *buffer, const expr &e) {
 #if CHECK_SEM_COVER_INTERMEDIATE_FEASIBILITY
-        if(feasible(e, "SemCover intermediate case"))
+        if(feasible(e, "SemCover intermediate case", util.stats.timings.eia_iter_feasibility))
             buffer->emplace_back(e);
 #else
         buffer->emplace_back(e);
@@ -248,6 +263,8 @@ namespace swine {
     }
 
     void EIANSolver::semCoverAndLinearize(const expr &formula, const std::vector<expr> &vars) {
+
+        Timer timer;
 
         std::vector<Comparison> allProblematicComps = find_values_in_bools<Comparison>(formula, Comparison::try_parse)
                 | filter([](const Comparison &c){ return !c.is_in_power_comp(); })
@@ -262,8 +279,10 @@ namespace swine {
 #if CHECK_SEM_COVER_FEASIBILITY
         solver.push();
         solver.add(formula);
-        if(!feasible("SemCover input formula"))
+        if(!feasible("SemCover input formula", util.stats.timings.eia_iter_feasibility)) {
+            util.stats.timings.eia_iter_sem_cover += timer;
             return;
+        }
 #endif
 
         std::unordered_map<unsigned int, size_t> varIndices;
@@ -342,7 +361,7 @@ namespace swine {
                 // Check whether these preconditions (signs of variables and the current variable being the largest)
                 // conflict with the current formula - then we can skip all the cases generated for these
                 // preconditions.
-                if(!feasible("SemCover branch")) {
+                if(!feasible("SemCover branch", util.stats.timings.eia_iter_feasibility)) {
                     solver.pop();
                     continue;
                 }
@@ -432,12 +451,17 @@ namespace swine {
                 // Linearize right here, so we can avoid creating another temporary buffer
                 for(const expr &e : *transformed) {
 #if SPLIT_ABS
+                    util.stats.timings.eia_iter_sem_cover += timer.get_and_reset();
                     log("Linearizing " << (precondition && varIsLargest && e));
                     todo.emplace_back(precondition && varIsLargest && linearize(e, vars));
+                    util.stats.timings.eia_iter_linearize += timer.get_and_reset();
 #else
                     // Replace ITEs from abs, then split disjuncts
-                    for(const expr &disjunct : find_bools(replace_ite(varIsLargest && e), [](const expr &e){ return !e.is_or(); }))
+                    for(const expr &disjunct : find_bools(replace_ite(varIsLargest && e), [](const expr &e){ return !e.is_or(); })) {
+                        util.stats.timings.eia_iter_sem_cover += timer.get_and_reset();
                         todo.emplace_back(linearize(disjunct, vars));
+                        util.stats.timings.eia_iter_linearize += timer.get_and_reset();
+                    }
 #endif
                 }
 
@@ -451,5 +475,6 @@ namespace swine {
 #if CHECK_SEM_COVER_FEASIBILITY
         solver.pop();
 #endif
+        util.stats.timings.eia_iter_sem_cover += timer;
     }
 }

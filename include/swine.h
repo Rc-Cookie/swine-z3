@@ -87,6 +87,7 @@ private:
     z3::check_result check_with_eia_n_proj();
     z3::check_result check_with_eia_n();
     z3::check_result check_with_lemmas();
+    void generate_lemmas(LemmaKind kind, std::vector<std::pair<z3::expr, LemmaKind>> &dst);
     void base_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas);
     void exp_symmetry_lemmas(const z3::expr &e, z3::expr_vector &lemmas);
     void symmetry_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
@@ -104,10 +105,10 @@ private:
     void monotonicity_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
     void prime_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
     void eia_n_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
-    void verify() const;
+    void verify();
     void brute_force();
     void add_lemma(const z3::expr &lemma, const LemmaKind kind);
-    std::vector<std::pair<z3::expr, LemmaKind>> preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas);
+    void preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas, std::vector<std::pair<z3::expr, LemmaKind>> &dst);
     z3::expr get_value(const z3::expr &exp) const;
     bool update_common_base(const z3::expr &expr);
     void add_bounds();

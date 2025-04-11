@@ -572,19 +572,43 @@ void Swine::add_bounds() {
     }
 }
 
-std::vector<std::pair<z3::expr, LemmaKind>> Swine::preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
-    std::vector<std::pair<z3::expr, LemmaKind>> res;
+void Swine::generate_lemmas(LemmaKind kind, std::vector<std::pair<z3::expr, LemmaKind>> &dst) {
+    Timer timer;
+    debug("Generating " << kind << " lemmas");
+    std::vector<std::pair<z3::expr, LemmaKind>> raw;
+    switch (kind) {
+        case LemmaKind::Symmetry:
+            symmetry_lemmas(raw); break;
+        case LemmaKind::Bounding:
+            bounding_lemmas(raw); break;
+        case LemmaKind::Monotonicity:
+            monotonicity_lemmas(raw); break;
+        case LemmaKind::EIA_n:
+            eia_n_lemmas(raw); break;
+        case LemmaKind::Prime:
+            prime_lemmas(raw); break;
+        case LemmaKind::Induction:
+            induction_lemmas(raw); break;
+        case LemmaKind::Interpolation:
+            interpolation_lemmas(raw); break;
+        default: throw std::invalid_argument("Unknown lemma kind");
+    }
+    preprocess_lemmas(raw, dst);
+    stats.timings.add_to_lemma(kind, timer);
+}
+
+void Swine::preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas, std::vector<std::pair<z3::expr, LemmaKind>> &dst) {
     for (const auto &[l,k]: lemmas) {
         const auto p {preproc->preprocess(l, false)};
         if (get_value(p).is_false()) {
-            res.emplace_back(p, k);
+            dst.emplace_back(p, k);
         }
     }
-    return res;
 }
 
 z3::check_result Swine::check(z3::expr_vector assumptions) {
 
+    Timer timer;
     std::unordered_set<Algorithm> algorithms{config.get_algorithms()};
     if (!config.is_active(LemmaKind::EIA_n)) {
         algorithms.erase(Algorithm::EIA);
@@ -613,7 +637,9 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
         z3::expr formula{ctx};
         if (algorithms.empty() || algorithms.contains(Algorithm::EIA) || algorithms.contains(Algorithm::EIAProj) || (algorithms.contains(Algorithm::Lemmas) && config.is_active(LemmaKind::EIA_n))) {
             formula = preproc->preprocess(input, true);
+            Timer base_detection_timer;
             if (update_common_base(formula)) {
+                stats.timings.base_detection += base_detection_timer;
                 log("Using exponent substitutions");
                 util->base = *common_base;
                 eia_proj = std::make_unique<EIAProj>(*util, formula);
@@ -621,6 +647,7 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
                     algorithms.erase(Algorithm::Z3);
                 }
             } else {
+                stats.timings.base_detection += base_detection_timer;
                 algorithms.erase(Algorithm::Z3);
                 algorithms.erase(Algorithm::EIA);
                 algorithms.erase(Algorithm::EIAProj);
@@ -640,13 +667,13 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
         frames.back().exp_ids.clear();
         frames.back().exps.resize(0);
         frames.back().exp_groups.clear();
+        frames.back().bounding_lemmas.clear();
         stats.non_constant_base = false;
         for (const auto &g: exp_finder->find_exps(formula)) {
             if (frames.back().exp_ids.emplace(g.orig().id()).second) {
                 frames.back().exps.push_back(g.orig());
                 frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));
                 stats.non_constant_base |= !g.has_ground_base();
-                compute_bounding_lemmas(g);
             }
         }
     } catch (const ExponentOverflow &e) {
@@ -668,6 +695,7 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
             compatible_algorithms.emplace_back(Algorithm::Lemmas);
         }
     }
+    stats.timings.preprocessing += timer.get_and_reset();
 
     z3::check_result res {z3::unknown};
     stats.algorithm = {};
@@ -675,6 +703,7 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
         log("No compatible algorithm -> just simplifying preprocessed formula");
         stats.algorithm = {};
         const z3::expr formula = (solver.assertions() | rangify | util->reduce_and()).simplify();
+        stats.timings.preprocessing += timer.get_and_reset();
         if(formula.is_true()) {
             res = z3::sat;
             if (config.validate_sat) {
@@ -695,14 +724,19 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
 }
 
 z3::check_result Swine::check(Algorithm algorithm) {
+    Timer timer;
     stats.algorithm = algorithm;
+    z3::check_result res;
     switch (algorithm) {
-        case Algorithm::Z3: return check_with_z3();
-        case Algorithm::Lemmas: return check_with_lemmas();
-        case Algorithm::EIAProj: return check_with_eia_n_proj();
-        case Algorithm::EIA: return check_with_eia_n();
+        case Algorithm::Z3: res = check_with_z3(); break;
+        case Algorithm::Lemmas: res = check_with_lemmas(); break;
+        case Algorithm::EIAProj: res = check_with_eia_n_proj(); break;
+        case Algorithm::EIA: res = check_with_eia_n(); break;
+        default: throw std::invalid_argument("Unknown algorithm");
     }
-    throw std::invalid_argument("Unknown algorithm");
+    stats.timings.add_to_algorithm(algorithm, timer);
+    stats.timings.solving += timer;
+    return res;
 }
 
 z3::check_result Swine::check_with_z3() {
@@ -732,7 +766,7 @@ z3::check_result Swine::check_with_eia_n_proj() {
 
         Timer timer;
         res = solver.check();
-//        util->stats.timings.approximate += timer;
+        util->stats.timings.eia_proj_approximate += timer;
         if(res != z3::sat) {
             assert(res == z3::unsat);
             log("No approximation found -> unsat after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
@@ -765,6 +799,12 @@ z3::check_result Swine::check_with_eia_n_proj() {
 z3::check_result Swine::check_with_lemmas() {
     z3::expr_vector assumptions{ctx};
 
+    for (const auto &g : frames.back().exp_groups) {
+        Timer timer;
+        compute_bounding_lemmas(*g);
+        stats.timings.add_to_lemma(LemmaKind::Bounding, timer);
+    }
+
     auto res {z3::unknown};
     unsigned rconsumption {0};
     while (config.rlimit == 0 || rconsumption < config.rlimit) {
@@ -783,11 +823,13 @@ z3::check_result Swine::check_with_lemmas() {
                 add_bounds();
             }
             debug("Generating candidate model");
+            Timer timer;
             if (!assumptions.empty()) {
                 res = solver.check(assumptions);
             } else {
                 res = solver.check();
             }
+            stats.timings.lemmas_approximate += timer;
             debug("Generated candidate model");
             if (res == z3::unsat) {
                 if (config.toggle_mode && sat_mode) {
@@ -873,32 +915,20 @@ z3::check_result Swine::check_with_lemmas() {
                     }
                     break;
                 }
-                debug("Generating symmetry lemmas");
-                symmetry_lemmas(lemmas);
-                lemmas = preprocess_lemmas(lemmas);
+                generate_lemmas(LemmaKind::Symmetry, lemmas);
                 if (lemmas.empty()) {
-                    debug("Generating bounding lemmas");
-                    bounding_lemmas(lemmas);
-                    lemmas = preprocess_lemmas(lemmas);
+                    generate_lemmas(LemmaKind::Bounding, lemmas);
                 }
                 if (lemmas.empty()) {
-                    debug("Generating monotonicity lemmas");
-                    monotonicity_lemmas(lemmas);
-                    lemmas = preprocess_lemmas(lemmas);
+                    generate_lemmas(LemmaKind::Monotonicity, lemmas);
                 }
                 if (lemmas.empty()) {
-                    debug("Generating EIA_n lemmas");
-                    eia_n_lemmas(lemmas);
-                    lemmas = preprocess_lemmas(lemmas);
+                    generate_lemmas(LemmaKind::EIA_n, lemmas);
                 }
                 if (lemmas.empty()) {
-                    debug("Generating prime lemmas");
-                    prime_lemmas(lemmas);
-                    debug("Generating induction lemmas");
-                    induction_lemmas(lemmas);
-                    debug("Generating interpolation lemmas");
-                    interpolation_lemmas(lemmas);
-                    lemmas = preprocess_lemmas(lemmas);
+                    generate_lemmas(LemmaKind::Prime, lemmas);
+                    generate_lemmas(LemmaKind::Induction, lemmas);
+                    generate_lemmas(LemmaKind::Interpolation, lemmas);
                 }
                 if (lemmas.empty()) {
                     if (config.is_active(LemmaKind::Interpolation)) {
@@ -936,11 +966,12 @@ void Swine::reset() {
     solver.reset();
     frames.clear();
     frames.emplace_back(ctx);
-    stats.reset();
+    stats = {};
     common_base = 0;
 }
 
-void Swine::verify() const {
+void Swine::verify() {
+    Timer timer;
     TermEvaluator eval{*util};
     for (const auto &f: frames) {
         for (const auto &[_,a]: f.preprocessed_assertions) {
@@ -949,13 +980,16 @@ void Swine::verify() const {
                 std::cout << a << std::endl;
                 std::cout << "model:" << std::endl;
                 std::cout << model << std::endl;
+                stats.timings.validation += timer;
                 return;
             }
         }
     }
+    stats.timings.validation += timer;
 }
 
 void Swine::brute_force() {
+    Timer timer;
     z3::expr_vector assertions{ctx};
     for (const auto &f: frames) {
         for (const auto &[a,_]: f.preprocessed_assertions) {
@@ -980,7 +1014,11 @@ void Swine::brute_force() {
                 }
             }
         }
+        stats.timings.base_detection += timer;
         verify();
+    }
+    else {
+        stats.timings.base_detection += timer;
     }
 }
 

@@ -22,8 +22,6 @@ namespace swine {
 
         expr formula = original_formula;
 
-//        Timer timer;
-
         for(int iterations = 1;; iterations++) {
 
             debug("-------- EIA_" << util.base << " iteration #" << iterations << " --------");
@@ -31,7 +29,6 @@ namespace swine {
 
             const expr_set remainingVarsAndExps = variables_in(formula, true, true);
             const std::vector<expr> remainingVars = remainingVarsAndExps | values | filter(is_var) | to_vec<expr>();
-//            util.stats.timings.eia_n_remove_unused += timer.get_and_reset();
 
             if(remainingVars.size() == remainingVarsAndExps.size()) {
                 log("Fully linearized " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
@@ -53,43 +50,44 @@ namespace swine {
                 debug(onlyLinearly.size() << " variable" << (onlyLinearly.size() == 1 ? "" : "s") << " only occurs linearly -> eliminating with MBP");
 
                 expr projected = liaProject(formula, onlyLinearly, approximation);
-//                std::cout << "Projected: " << Util::to_string(projected) << "\nSimplifying divisibility constraints" << std::endl;
+
+                Timer timer;
                 auto [premise, simplified] = abSimplifyDiv(projected, remainingVarsAndExps, approximation);
                 // TODO: Validate approximation?
 //                std::cout << "Simplified divs: " << Util::to_string(simplified) << "\nPremises from SimplifyDiv: " << Util::to_string(premise) << std::endl;
                 if(!approximation.eval(simplified, true).is_true()) {
                     log("Approximation not a model SimplifyDiv projection after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
-//                    util.stats.timings.eia_n_remove_linear += timer.get_and_reset();
+                    util.stats.timings.eia_proj_simplify_div += timer;
                     return { premise && simplified != projected, unsat };
                 }
                 formula = simplified;
-//                util.stats.timings.eia_n_remove_linear += timer.get_and_reset();
+                util.stats.timings.eia_proj_simplify_div += timer;
                 continue;
             }
-//            util.stats.timings.eia_n_remove_linear += timer.get_and_reset();
 
             debug("All variables occur in exp -> applying SemCover");
 
             // ELSE
+            Timer timer;
             const auto [premise, projected] = abSemCover(formula, remainingVars, approximation);
             debug("SemCover result: " << projected);
-//            std::cout << "Projected: " << Util::to_string(projected) << "\nPremises from SemCover: " << Util::to_string(premise) << std::endl;
 
             if(!approximation.eval(projected, true).is_true()) {
                 log("Approximation not a model of SemCover projection after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
-//                util.stats.timings.eia_n_sem_cover += timer.get_and_reset();
+                util.stats.timings.eia_proj_sem_cover += timer;
                 return { premise && projected != formula, unsat };
             }
+            util.stats.timings.eia_proj_sem_cover += timer.get_and_reset();
 
             formula = linearize(projected, remainingVars);
             log("Linearized: " << formula);
 
             if(!approximation.eval(formula, true).is_true()) {
                 log("Approximation not a model of linearized formula after " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
-//                util.stats.timings.eia_n_sem_cover += timer.get_and_reset();
+                util.stats.timings.eia_proj_linearize += timer;
                 return { projected != formula, unsat };
             }
-//            util.stats.timings.eia_n_sem_cover += timer.get_and_reset();
+            util.stats.timings.eia_proj_linearize += timer.get_and_reset();
         }
     }
 
@@ -141,11 +139,11 @@ namespace swine {
         if(variables.empty())
             return formula;
 
-//        Timer timer;
+        Timer timer;
         expr res = to_expr(util.ctx, Z3_qe_model_project(util.ctx, model, (unsigned int) variables.size(), &variables.at(0), formula));
-//        util.stats.timings.eia_n_mbp += timer;
-
-        return replace_ite(res);
+        res = replace_ite(res);
+        util.stats.timings.eia_proj_mbp += timer;
+        return res;
     }
 
 

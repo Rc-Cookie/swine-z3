@@ -205,6 +205,7 @@ int main(int argc, char *argv[]) {
     }
 
     Timer::duration totalDuration = Timer::duration::zero();
+    Timings timings;
 
     // If directory, run all files recursively, otherwise just run the file itself
     if(fs::is_directory(*input)) {
@@ -224,8 +225,12 @@ int main(int argc, char *argv[]) {
             const auto [res, stats] = run_file(config, file, name, false);
             Timer::duration duration = timer;
             totalDuration += duration;
+            timings += stats.timings;
             results.push_back({ name, res, duration });
         }
+
+        if(config.statistics)
+            std::cout << "\n-- timings --\n" << timings << std::endl;
 
         // If we have a bunch of output, summarize in compact form
         if(config.log || config.debug) {

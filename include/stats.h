@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <boost/multiprecision/cpp_int.hpp>
 #include "algorithm.h"
+#include "lemma_kind.h"
 
 namespace swine {
 
@@ -28,6 +29,13 @@ namespace swine {
         }
 
         /**
+         * Resets the timer to 0.
+         */
+        void reset() {
+            start = std::chrono::system_clock::now();
+        }
+
+        /**
          * Resets the timer and returns the time until that reset.
          *
          * @return The duration since the previous reset, or since initialization if this was
@@ -48,6 +56,68 @@ namespace swine {
         operator duration() const {
             return get();
         }
+    };
+
+    /**
+     * Statistics about the duration spent in several parts of the solver.
+     */
+    struct Timings {
+
+        using duration = Timer::duration;
+
+        /** Time spent transforming the input formula and populating caches. */
+        duration preprocessing {0};
+        /** Time spent during preprocessing for detecting a common exp() base. */
+        duration base_detection {0};
+        /** Time spent actually solving. */
+        duration solving {0};
+        /** Time spent solving with each algorithm. If an algorithm is not present, it's implicitly 0. */
+        std::unordered_map<Algorithm, duration> algorithms;
+        /** Time spent in the "lemmas" algorithm generating approximations with Z3. */
+        duration lemmas_approximate {0};
+        /** Time spent generating each kind of lemma. If a kind is not present, it's implicitly 0. */
+        std::unordered_map<LemmaKind, duration> lemmas;
+        /** Time spent in the "eia-proj" algorithm generating approximations with Z3. */
+        duration eia_proj_approximate {0};
+        /** Time spent in the "eia-proj" algorithm eliminating variables with model based projection. */
+        duration eia_proj_mbp {0};
+        /** Time spent in the "eia-proj" algorithm in the AbSimplifyDiv procedure. */
+        duration eia_proj_simplify_div {0};
+        /** Time spent in the "eia-proj" algorithm in the AbSemCover procedure. */
+        duration eia_proj_sem_cover {0};
+        /** Time spent in the "eia-proj" algorithm linearizing formulas from PowerComp. */
+        duration eia_proj_linearize {0};
+        /** Time spent in the "eia-iter" algorithm eliminating variables with Z3 quantifier elimination. */
+        duration eia_iter_qe {0};
+        /** Time spent in the "eia-iter" algorithm in the SimplifyDiv procedure. */
+        duration eia_iter_simplify_div {0};
+        /** Time spent in the "eia-iter" algorithm in the SemCover procedure (without linearization). */
+        duration eia_iter_sem_cover {0};
+        /** Time spent in the "eia-iter" algorithm's SemCover procedure checking feasibility of sub-formulas. */
+        duration eia_iter_feasibility {0};
+        /** Time spent in the "eia-iter" algorithm linearizing formulas from PowerComp */
+        duration eia_iter_linearize {0};
+        /** Time spent validating sat/unsat results. Considered part of the solver time. */
+        duration validation {0};
+
+        /** Returns the duration spent on the given algorithm. */
+        duration algorithm(Algorithm a) const;
+
+        /** Increments the time spent on the given algorithm by the specified amount. */
+        duration add_to_algorithm(Algorithm a, const duration &dt);
+
+        /** Returns the duration spent generating the given kind of lemmas. */
+        duration lemma(LemmaKind k) const;
+
+        /** Increments the time spent generating the given kind of lemmas by the specified amount. */
+        duration add_to_lemma(LemmaKind k, const duration &dt);
+
+        /** Returns the sum of the durations, excluding sub-durations. */
+        duration total() const;
+
+        Timings& operator+=(const Timings &dt);
+
+        Timings operator+(const Timings &t2) const;
     };
 
     /**
@@ -77,10 +147,10 @@ namespace swine {
         bool non_constant_base {false};
         /** The algorithms used for solving. */
         std::optional<Algorithm> algorithm {};
-
-        /** Resets all counters to 0 / their respective default state. */
-        void reset();
+        /** Durations of certain parts of the solving process. */
+        Timings timings;
     };
 
+    std::ostream& operator<<(std::ostream &s, const Timings &timings);
     std::ostream& operator<<(std::ostream &s, const Statistics &stats);
 }

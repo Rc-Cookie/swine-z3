@@ -59,11 +59,13 @@ void print_help() {
 }
 
 std::pair<z3::check_result, Statistics> run_file(Config &config, std::string file, std::string name, bool single) {
-    // Print file name first so that it is clear what's currently calculating. When not logging anything in between,
-    // sat/unsat/unknown will be printed in the same line, so no std::endl.
-    if(config.log || config.debug)
-        std::cout << name << std::endl;
-    else std::cout << name << std::string(name.length() < 70 ? 70 - name.length() : 0, ' ') << std::flush;
+    if(!single) {
+        // Print file name first so that it is clear what's currently calculating. When not logging anything in between,
+        // sat/unsat/unknown will be printed in the same line, so no std::endl.
+        if(config.log || config.debug)
+            std::cout << name << std::endl;
+        else std::cout << name << std::string(name.length() < 70 ? 70 - name.length() : 0, ' ') << std::flush;
+    }
 
     Timer timer;
 
@@ -87,9 +89,16 @@ std::pair<z3::check_result, Statistics> run_file(Config &config, std::string fil
 
     // Print result and duration
     Timer::duration duration = timer;
-    if(config.log || config.debug)
-        std::cout << std::string(70, ' ');
-    std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms with " << (swine.get_stats().algorithm ? algorithm::str(*swine.get_stats().algorithm) : "preprocessing only") << std::endl;
+    if(single)
+        std::cout << res << std::endl;
+    else {
+        if(config.log || config.debug)
+            std::cout << std::string(70, ' ');
+        if(config.statistics)
+            std::cout << ": " << (res == z3::sat ? "sat    " : res == z3::unsat ? "unsat  " : "unknown") << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms with " << (swine.get_stats().algorithm ? algorithm::str(*swine.get_stats().algorithm) : "preprocessing only") << std::endl;
+        else std::cout << res << std::endl;
+    }
+
 
     // Don't print model if not explicitly requested, we're not logging, and are solving many files at once
     if(res == z3::sat && swine.has_model() && (single || config.model || config.log || config.debug))

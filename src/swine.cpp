@@ -651,8 +651,10 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
                 algorithms.erase(Algorithm::Z3);
                 algorithms.erase(Algorithm::EIA);
                 algorithms.erase(Algorithm::EIAProj);
-                log("Restarting preprocessing");
-                formula = preproc->preprocess(input, false);
+                if (algorithms.contains(Algorithm::Lemmas)) {
+                    log("Restarting preprocessing");
+                    formula = preproc->preprocess(input, false);
+                }
             }
         } else {
             algorithms.erase(Algorithm::Z3);

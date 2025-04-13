@@ -72,6 +72,7 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
     }
     if (advanced && util.config.is_active(LemmaKind::EIA_n)) {
         res = utils::replace_ite(res);
+        write_log("replace ITEs:\n" << res);
 
         // Create variables for exponents that are not just a variable
         while(true) {
@@ -92,6 +93,7 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
                     | util.reduce_and();
 
             res = utils::substitute_all(res, replacements) && constraints;
+            write_log("exp substitutions:\n" << res);
         }
     }
     return res.simplify();

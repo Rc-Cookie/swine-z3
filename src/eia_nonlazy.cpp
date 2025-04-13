@@ -2,16 +2,26 @@
 #include "divisibility.h"
 #include "power_comp.h"
 
+#ifndef BREATH_FIRST
 // Order in which to process the to-do list
 #define BREATH_FIRST 0
+#endif
 
+#ifndef SPLIT_ABS
 // Whether to preemptively perform case distinctions instead of using ITEs for abs()
 #define SPLIT_ABS 1
+#endif
+
+#ifndef CHECK_SEM_COVER_BRANCH_FEASIBILITY
 // Whether to check LIA-satisfiability of each set of cases with the same largest
 // variable (and the same variable signs, of SPLIT_ABS is enabled)
 #define CHECK_SEM_COVER_BRANCH_FEASIBILITY 1
+#endif
+
+#ifndef CHECK_SEM_COVER_INTERMEDIATE_FEASIBILITY
 // Whether to check LIA-satisfiability of each intermediate generated case in SemCover
 #define CHECK_SEM_COVER_INTERMEDIATE_FEASIBILITY 1
+#endif
 
 #define CHECK_SEM_COVER_FEASIBILITY (CHECK_SEM_COVER_INTERMEDIATE_FEASIBILITY || (SPLIT_ABS && CHECK_SEM_COVER_BRANCH_FEASIBILITY))
 

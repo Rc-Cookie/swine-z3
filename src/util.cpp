@@ -355,8 +355,8 @@ z3::expr Util::term(const cpp_int &value) const {
     return ctx.int_val(value.str().c_str());
 }
 
-z3::expr Util::make_exp(const z3::expr &base, const z3::expr &exponent) const {
-    return (*exp)(base, exponent);
+z3::expr Util::make_exp(const z3::expr &b, const z3::expr &exponent) const {
+    return (*exp)(b, exponent);
 }
 
 z3::expr Util::make_exp(const z3::expr &exponent) const {

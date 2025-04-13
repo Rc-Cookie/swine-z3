@@ -1,5 +1,6 @@
 #include "util.h"
 #include "term.h"
+#include "divisibility.h"
 
 namespace swine {
 
@@ -147,6 +148,26 @@ namespace utils {
         dst.push_back(replacement);
         z3::expr copy = expr;
         return copy.substitute(src, dst);
+    }
+
+    z3::expr replace_eq(const z3::expr &expr) {
+        return substitute_all(expr, find_bools(expr, [](const z3::expr &e){
+                    if(e.is_distinct())
+                        return e.arg(0).is_int();
+                    if(!e.is_eq() || !e.arg(0).is_int())
+                        return false;
+                    std::optional<Divisibility> d = Divisibility::try_parse(e);
+                    return !d || d->is_const();
+                })
+                | std::views::transform([](const z3::expr &e) -> std::pair<z3::expr, z3::expr> {
+                    if(e.is_eq())
+                        return { e, (e.arg(0) <= e.arg(1)) && (e.arg(0) >= e.arg(1)) };
+                    z3::expr_vector conj = { e.ctx() };
+                    for(unsigned int i=0; i<e.num_args(); i++)
+                        for(unsigned int j=i+1; j<e.num_args(); j++)
+                            conj.push_back((e.arg(i) < e.arg(j)) || (e.arg(i) > e.arg(j)));
+                    return { e, conj.size() == 1 ? conj[0] : z3::mk_and(conj) };
+                }));
     }
 
     z3::expr substitute_ite_here(const z3::expr &expr, const z3::expr &ite, int depth) {

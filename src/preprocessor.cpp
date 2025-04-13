@@ -1,5 +1,6 @@
 #include "preprocessor.h"
 #include "config.h"
+#include "comparison.h"
 
 #define write_log(msg) _log(util.config, msg)
 #define write_debug(msg) _debug(util.config, msg)
@@ -95,6 +96,11 @@ z3::expr Preprocessor::preprocess(const z3::expr &term, bool advanced) {
             res = utils::substitute_all(res, replacements) && constraints;
             write_log("exp substitutions:\n" << res);
         }
+
+#if !EXTENDED_COMPS
+        res = utils::replace_eq(res);
+        write_log("replace equalities:\n" << res);
+#endif
     }
     return res.simplify();
 }

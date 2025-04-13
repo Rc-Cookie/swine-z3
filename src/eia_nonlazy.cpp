@@ -18,6 +18,14 @@
 #define log(msg) _log(util.config, msg)
 #define debug(msg) _debug(util.config, msg)
 
+#if EXTENDED_COMPS
+/** The expression (a == b) if extended comparisons are enabled, otherwise (a <= b && a >= b). */
+#define EQ(a,b) ((a) == (b))
+#else
+/** The expression (a == b) if extended comparisons are enabled, otherwise (a <= b && a >= b). */
+#define EQ(a,b) ((a) <= (b) || (a) >= (b))
+#endif
+
 namespace swine {
 
     using namespace z3;
@@ -431,10 +439,10 @@ namespace swine {
                     for(const expr &disjunct : *transformed) {
                         for(const auto &[j, expJ] : js) {
                             // |x| = j /\ gamma[2^j / exp(x)]
-                            maybeEmplace(buffer, absVar == j && substitute(disjunct, varInPower, expJ));
+                            maybeEmplace(buffer, EQ(absVar, j) && substitute(disjunct, varInPower, expJ));
                             for(const auto &[absV, expV] : otherVars) {
                                 // |x| = j + |v| /\ gamma[2^j * exp(v) / exp(x)]
-                                maybeEmplace(buffer, absVar == j + absV && substitute(disjunct, varInPower, expJ * expV));
+                                maybeEmplace(buffer, EQ(absVar, j + absV) && substitute(disjunct, varInPower, expJ * expV));
                             }
                         }
                         maybeEmplace(buffer, bigCondition && substitute_all(disjunct, bigReplacements));

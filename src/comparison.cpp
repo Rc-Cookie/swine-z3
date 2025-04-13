@@ -72,6 +72,7 @@ namespace swine {
                     return Comparison(*t, Comparison::Kind::Less, comparison);
                 else return { };
             }
+#if EXTENDED_COMPS
             case Z3_OP_EQ: { // a = b <==> a - b = 0
                 std::optional<Term> t = Term::try_parse(comparison.arg(0) - comparison.arg(1));
                 if(t)
@@ -86,6 +87,7 @@ namespace swine {
                     return Comparison(*t, Comparison::Kind::NotEqual, comparison);
                 else return { };
             }
+#endif
             case Z3_OP_NOT: {
                 std::optional<Comparison> c = try_parse(comparison.arg(0));
                 if(c) {

@@ -5,6 +5,14 @@
 #include "util.h"
 #include "term.h"
 
+#ifndef EXTENDED_COMPS
+/**
+ * Whether to support extended comparisons and the extended PowerComp fragment, that is, comparisons
+ * other than "<". If disabled, the parse() functions will not be able to parse equalities and distinctions.
+ */
+#define EXTENDED_COMPS 0
+#endif
+
 namespace swine {
 
     using namespace boost::multiprecision;

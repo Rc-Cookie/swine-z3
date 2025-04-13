@@ -224,7 +224,7 @@ namespace swine {
                 case Comparison::Kind::Less:     return PowerComp(base, coeff, exp.arg(1), -comparison.term.constant, Kind::Less);
             }
         }
-        if(varCount != 2 || (comparison.term.constant != 0 && (comparison.kind != Comparison::Kind::Less || comparison.term.constant != -1)))
+        if(varCount != 2 || (comparison.term.constant != 0 && (!EXTENDED_COMPS || comparison.kind != Comparison::Kind::Less || comparison.term.constant != -1)))
             return { };
 
         const auto var_sum = comparison.term.var_sum() | to_pairs<cpp_int, expr>();
@@ -270,7 +270,19 @@ namespace swine {
             return;
 
         switch(expr.decl().decl_kind()) {
+#if EXTENDED_COMPS
             case Z3_OP_NOT:
+#else
+            case Z3_OP_NOT: {
+                std::optional<PowerComp> pc = PowerComp::try_parse(expr);
+                if(pc) {
+                    out_original_power_comp_exprs.add(expr);
+                    out_power_comps.emplace(expr.id(), *pc);
+                    return;
+                }
+                /* continue */
+            }
+#endif
             case Z3_OP_AND:
             case Z3_OP_OR:
             case Z3_OP_IMPLIES:
@@ -352,7 +364,7 @@ namespace swine {
 
         if(!any) {
             // Not strictly against the contract of the function, but rarely intended. Use
-            // Ansi color codes to color red and bold, don't use stderr since that may not be
+            // ansi color codes to color red and bold, don't use stderr since that may not be
             // properly synced with stdout, making it hard to see where the error occurred.
             std::cout << "\x1b[1;31mLinearize() did not find anything to linearize with variables " << variables << " in " << expr << "\x1b[0m" << std::endl;
         }

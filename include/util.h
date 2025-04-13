@@ -407,6 +407,16 @@ namespace utils {
     }
 
     /**
+     * Replaces any int equality or "distinct" expressions int the given expression, excluding equalities that
+     * represent divisibility constraints, by replacing them with set of inequalities.
+     *
+     * @param expr An expression to replace any equalities in
+     * @return An equivalent expression without any equality or "distinct" expressions with int expressions
+     *         that don't represent divisibility constraints
+     */
+    z3::expr replace_eq(const z3::expr &expr);
+
+    /**
      * Removes any if-then-else expressions from the given expression, by replacing them with regular boolean
      * conditions. Since these replacements can't necessarily be done directly where the ITE is located in the
      * expression (when it is not of sort bool), the given expression itself must be of sort bool.

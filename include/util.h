@@ -429,14 +429,16 @@ namespace utils {
     /**
      * Performs variable inlining at best-effort basis. E.g. (x + 1 = 0 && exp(x,y)) may be replaced with
      * (x = -1 && exp(-1,y)), but not too much effort will be spent trying to rearrange an equality to result
-     * in a constant term. Note that all variables will remain in the formula, but possibly only in an
-     * occurrence (var = constant). There is no need to invoke this method several times, it already internally
+     * in a constant term. There is no need to invoke this method several times, it already internally
      * performs transitive inlining.
      *
      * @param expr The expression in which to inline constant
+     * @param retain_vars If set to true, all removed variables will be re-added to the formula as
+     *                    "var = constant", so that possible models for the formula will still contain assignments
+     *                    for all original variables
      * @return The expression with some variables inlined
      */
-    z3::expr inline_constants(const z3::expr &expr);
+    z3::expr inline_constants(const z3::expr &expr, bool retain_vars);
 
     /**
      * Creates a range reduction operation that returns AND{r in range} for a given range,
@@ -516,6 +518,37 @@ namespace utils {
      * @return True iff the bases don't conflict, false otherwise
      */
     bool join_common_base(std::optional<cpp_int> &base, const std::optional<cpp_int> &base2);
+
+    /**
+     * Returns whether the given formula is in the EIA_n fragment, collecting the common
+     * base in the given variable. The variable can have 3 cases:
+     * <ul>
+     *   <li>0: No exp -> no base, but not conflicting</li>
+     *   <li>>0: That value is the base</li>
+     *   <li>{}: Several non-equal bases, or generally not in EIA_n</li>
+     * </ul>
+     * The initial value of common_base is also considered; if it mismatches the base found
+     * in the expression, the result will be "false". To test this formula in isolation, its
+     * initial value should be {0}.
+     *
+     * The formula is allowed to contain nested exp() statements (in the exponent), and ITE
+     * statements.
+     *
+     * @param expr The expression to test
+     * @param common_base The common base of the whole formula
+     * @return Whether the expression is in EIA_n, assuming the initial value of common_base
+     */
+    bool is_in_eia_n(const z3::expr &expr, std::optional<cpp_int> &common_base);
+
+    /**
+     * Returns the common base, if the given formula is in the EIA_n fragment, or an empty
+     * optional if the formula is not in EIA_n. If the formula contains no exp() expressions,
+     * the result will be an optional with value 0.
+     *
+     * @param expr The expression to obtain the common base of
+     * @return The common base if the formula is in EIA_n, 0 if no exp, or else an empty optional
+     */
+    std::optional<cpp_int> get_eia_n_base(const z3::expr &expr);
 }
 
 

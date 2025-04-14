@@ -209,7 +209,7 @@ namespace utils {
         }
     }
 
-    z3::expr inline_constants(const z3::expr &expr) {
+    z3::expr inline_constants(const z3::expr &expr, bool retain_vars) {
 
         // Reused each iteration
         std::vector<std::pair<z3::expr, z3::expr>> replacements;
@@ -271,7 +271,7 @@ namespace utils {
 
             // No more variables to inline
             if(replacements.empty()) {
-                if(!replaced.empty()) {
+                if(retain_vars && !replaced.empty()) {
                     // Add x_i = c_i for each inlined variable; otherwise Z3 won't include them in a potential model
                     res = res && replaced
                                  | std::views::values
@@ -351,6 +351,98 @@ namespace utils {
             return true;
         base = {};
         return false;
+    }
+
+    /**
+     * Tests whether the given (Int-sorted) term is in EIA_n, and collects the common base.
+     *
+     * @param term The term to test, must be of sort Int
+     * @param vars_allowed Whether non-constant expressions may appear in the sub-term
+     * @param common_base The current sub-term, to be modified by this function
+     * @return In the first element, whether the term is in EIA_n given the specified common
+     *         base assumption. If the first element is true, the second contains whether the
+     *         term contains non-constant terms, otherwise the value is arbitrary.
+     */
+    std::pair<bool,bool> collect_eia_n_base(const z3::expr &term, bool vars_allowed, std::optional<cpp_int> &common_base) {
+        if(!term.is_app()) {
+            common_base = { };
+            return { false, true };
+        }
+        if(term.is_numeral())
+            return { true, false };
+        if(is_var(term)) {
+            if(!vars_allowed)
+                common_base = { };
+            return { true, true };
+        }
+        if(is_func(term)) {
+            // Base must be constant, exponent can be any EIA_n term
+            if(!vars_allowed || !is_exp(term) || !term.arg(0).is_numeral() || !join_common_base(common_base, value(term.arg(0)))) {
+                common_base = { };
+                return { false, true };
+            }
+            return collect_eia_n_base(term.arg(1), true, common_base);
+        }
+
+        switch(term.decl().decl_kind()) {
+            case Z3_OP_UMINUS:
+            case Z3_OP_ADD:
+            case Z3_OP_SUB: {
+                // Each summand must be in EIA_n
+                bool vars = false;
+                for(unsigned int i=0; i < term.num_args(); i++) {
+                    auto [has, any_vars] = collect_eia_n_base(term.arg(i), vars_allowed, common_base);
+                    if(!has)
+                        return { false, true };
+                    vars |= any_vars;
+                }
+                return { true, vars };
+            }
+            case Z3_OP_MUL: {
+                // Linear: only one factor is allowed to be non-constant
+                bool vars = false;
+                for(unsigned int i=0; i < term.num_args(); i++) {
+                    auto [has, any_vars] = collect_eia_n_base(term.arg(i), vars_allowed, common_base);
+                    if(!has || (vars && !vars_allowed))
+                        return { false, true };
+                    vars |= any_vars;
+                    vars_allowed &= !any_vars;
+                }
+                return { true, vars };
+            }
+            case Z3_OP_ITE: {
+                // Condition is bool and would be extracted to top level -> may contain variables even if the current term
+                // must be constant
+                bool condition = is_in_eia_n(term.arg(0), common_base);
+                if(!condition)
+                    return { false, true };
+                // Each possible value must be in EIA_n, and possibly constant
+                auto [has, vars] = collect_eia_n_base(term.arg(1), vars_allowed, common_base);
+                if(!has)
+                    return { false, true };
+                auto [has2, vars2] = collect_eia_n_base(term.arg(2), vars_allowed, common_base);
+                return { has2, vars || vars2 };
+            }
+            default: {
+                common_base = { };
+                return { false, true };
+            }
+        }
+    }
+
+    bool is_in_eia_n(const z3::expr &expr, std::optional<cpp_int> &common_base) {
+        if(!common_base)
+            return false;
+        for(const z3::expr &t : utils::find(expr, [](const z3::expr &e){ return e.is_int(); }))
+            if(!collect_eia_n_base(t, true, common_base).first)
+                return false;
+        return true;
+    }
+
+    std::optional<cpp_int> get_eia_n_base(const z3::expr &expr) {
+        std::optional<cpp_int> base = 0;
+        is_in_eia_n(expr, base);
+        return base;
     }
 }
 

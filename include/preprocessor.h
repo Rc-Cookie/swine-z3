@@ -5,6 +5,12 @@
 
 namespace swine {
 
+struct PreprocResult {
+    z3::expr simple;
+    z3::expr full;
+    std::optional<cpp_int> eia_n_base;
+};
+
 class Preprocessor {
 
     Util &util;
@@ -15,7 +21,7 @@ public:
 
     Preprocessor(Util &util);
 
-    z3::expr preprocess(const z3::expr &term, bool advanced);
+    PreprocResult preprocess(const z3::expr &term, bool full);
 
 };
 

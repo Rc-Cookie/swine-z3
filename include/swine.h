@@ -76,7 +76,6 @@ private:
     bool sat_mode {true};
     long long bound {2};
     z3::model model;
-    std::optional<boost::multiprecision::cpp_int> common_base;
     std::unique_ptr<EIAProj> eia_proj;
 
     friend std::ostream& operator<<(std::ostream &s, const Swine &swine);
@@ -110,7 +109,6 @@ private:
     void add_lemma(const z3::expr &lemma, const LemmaKind kind);
     void preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas, std::vector<std::pair<z3::expr, LemmaKind>> &dst);
     z3::expr get_value(const z3::expr &exp) const;
-    bool update_common_base(const z3::expr &expr);
     void add_bounds();
 
 public:

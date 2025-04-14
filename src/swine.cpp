@@ -46,8 +46,7 @@ Swine::Swine(const Config &config, z3::context &ctx):
     util(std::make_unique<Util>(ctx, this->config, this->stats)),
     preproc(std::make_unique<Preprocessor>(*util)),
     exp_finder(std::make_unique<ExpFinder>(*util)),
-    model(ctx),
-    common_base(0) {
+    model(ctx) {
     solver.set("model", true);
     if (config.get_lemmas) {
         solver.set("unsat_core", true);
@@ -95,37 +94,6 @@ void Swine::add_lemma(const z3::expr &t, const LemmaKind kind) {
 
 z3::expr Swine::get_value(const z3::expr &exp) const {
     return model.eval(exp, true);
-}
-
-bool Swine::update_common_base(const z3::expr &expr) {
-    common_base = 0;
-    for (const z3::expr &t : utils::find(expr, [](const z3::expr &e){ return e.is_int(); })) {
-        std::optional<Term> term{Term::try_parse(t)};
-        if (!term) {
-            log("Not a term: " << t);
-            common_base = {};
-            return false;
-        }
-        for(const z3::expr &v : term->variables | std::views::values) {
-            if (utils::is_var(v)) {
-                continue;
-            }
-            if (!utils::is_exp(v)) {
-                log("Not a linear term: " << v << " in " << *term);
-                common_base = {};
-                return false;
-            }
-            if (!v.arg(0).is_numeral() || !utils::is_var(v.arg(1))) {
-                log("Not a constant raised by a variable: " << v << " in " << *term);
-                common_base = {};
-                return false;
-            }
-            if (!utils::join_common_base(common_base, utils::value(v.arg(0)))) {
-                return false;
-            }
-        }
-    }
-    return true;
 }
 
 void Swine::symmetry_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
@@ -545,8 +513,7 @@ void Swine::eia_n_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
     const auto [premise, projected] = eia_proj->evaluateCase(solver.get_model());
 
     if(projected != z3::unsat) {
-        log("Projected to " << projected << " -> no new EIA_" << *common_base << " lemmas");
-//        ++util->stats.unusable_eia_n_lemmas;
+        log("Projected to " << projected << " -> no new EIA_" << util->base << " lemmas");
         return;
     }
 
@@ -599,7 +566,7 @@ void Swine::generate_lemmas(LemmaKind kind, std::vector<std::pair<z3::expr, Lemm
 
 void Swine::preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas, std::vector<std::pair<z3::expr, LemmaKind>> &dst) {
     for (const auto &[l,k]: lemmas) {
-        const auto p {preproc->preprocess(l, false)};
+        const auto p {preproc->preprocess(l, false).simple};
         if (get_value(p).is_false()) {
             dst.emplace_back(p, k);
         }
@@ -634,44 +601,35 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
     const z3::expr input = z3::mk_and(assertions);
 
     try {
-        z3::expr formula{ctx};
-        if (algorithms.empty() || algorithms.contains(Algorithm::EIA) || algorithms.contains(Algorithm::EIAProj) || (algorithms.contains(Algorithm::Lemmas) && config.is_active(LemmaKind::EIA_n))) {
-            formula = preproc->preprocess(input, true);
-            Timer base_detection_timer;
-            if (update_common_base(formula)) {
-                stats.timings.base_detection += base_detection_timer;
-                log("Using exponent substitutions");
-                util->base = *common_base;
-                eia_proj = std::make_unique<EIAProj>(*util, formula);
-                if (*common_base) {
-                    algorithms.erase(Algorithm::Z3);
-                }
-            } else {
-                stats.timings.base_detection += base_detection_timer;
+        bool do_full_preproc {algorithms.empty() || algorithms.contains(Algorithm::EIA) || algorithms.contains(Algorithm::EIAProj) || (algorithms.contains(Algorithm::Lemmas) && config.is_active(LemmaKind::EIA_n))};
+        PreprocResult preprocessed {preproc->preprocess(input, do_full_preproc)};
+
+        z3::expr *formula;
+        if (preprocessed.eia_n_base) {
+            formula = &preprocessed.full;
+            util->base = *preprocessed.eia_n_base;
+            eia_proj = std::make_unique<EIAProj>(*util, *formula);
+            if (*preprocessed.eia_n_base) {
                 algorithms.erase(Algorithm::Z3);
-                algorithms.erase(Algorithm::EIA);
-                algorithms.erase(Algorithm::EIAProj);
-                if (algorithms.contains(Algorithm::Lemmas)) {
-                    log("Restarting preprocessing");
-                    formula = preproc->preprocess(input, false);
-                }
             }
         } else {
+            formula = &preprocessed.simple;
             algorithms.erase(Algorithm::Z3);
-            formula = preproc->preprocess(input, false);
+            algorithms.erase(Algorithm::EIA);
+            algorithms.erase(Algorithm::EIAProj);
         }
-        solver.add(formula);
+        solver.add(*formula);
 
         frames.back().preprocessed_assertions.clear();
         if (config.validate_sat || config.validate_unsat || config.get_lemmas) {
-            frames.back().preprocessed_assertions.emplace_back(formula, input);
+            frames.back().preprocessed_assertions.emplace_back(*formula, input);
         }
         frames.back().exp_ids.clear();
         frames.back().exps.resize(0);
         frames.back().exp_groups.clear();
         frames.back().bounding_lemmas.clear();
         stats.non_constant_base = false;
-        for (const auto &g: exp_finder->find_exps(formula)) {
+        for (const auto &g: exp_finder->find_exps(*formula)) {
             if (frames.back().exp_ids.emplace(g.orig().id()).second) {
                 frames.back().exps.push_back(g.orig());
                 frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));
@@ -969,7 +927,6 @@ void Swine::reset() {
     frames.clear();
     frames.emplace_back(ctx);
     stats = {};
-    common_base = 0;
 }
 
 void Swine::verify() {

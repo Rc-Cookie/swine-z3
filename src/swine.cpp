@@ -970,11 +970,11 @@ void Swine::brute_force() {
                 }
             }
         }
-        stats.timings.base_detection += timer;
+        stats.timings.validation += timer;
         verify();
     }
     else {
-        stats.timings.base_detection += timer;
+        stats.timings.validation += timer;
     }
 }
 

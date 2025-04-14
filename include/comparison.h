@@ -10,7 +10,7 @@
  * Whether to support extended comparisons and the extended PowerComp fragment, that is, comparisons
  * other than "<". If disabled, the parse() functions will not be able to parse equalities and distinctions.
  */
-#define EXTENDED_COMPS 0
+#define EXTENDED_COMPS 1
 #endif
 
 namespace swine {

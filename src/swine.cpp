@@ -566,7 +566,7 @@ void Swine::generate_lemmas(LemmaKind kind, std::vector<std::pair<z3::expr, Lemm
 
 void Swine::preprocess_lemmas(const std::vector<std::pair<z3::expr, LemmaKind>> &lemmas, std::vector<std::pair<z3::expr, LemmaKind>> &dst) {
     for (const auto &[l,k]: lemmas) {
-        const auto p {preproc->preprocess(l, false).simple};
+        const auto p {preproc->preprocess(l, false).first};
         if (get_value(p).is_false()) {
             dst.emplace_back(p, k);
         }
@@ -602,34 +602,31 @@ z3::check_result Swine::check(z3::expr_vector assumptions) {
 
     try {
         bool do_full_preproc {algorithms.empty() || algorithms.contains(Algorithm::EIA) || algorithms.contains(Algorithm::EIAProj) || (algorithms.contains(Algorithm::Lemmas) && config.is_active(LemmaKind::EIA_n))};
-        PreprocResult preprocessed {preproc->preprocess(input, do_full_preproc)};
+        const auto [formula, common_base] {preproc->preprocess(input, do_full_preproc)};
 
-        z3::expr *formula;
-        if (preprocessed.eia_n_base) {
-            formula = &preprocessed.full;
-            util->base = *preprocessed.eia_n_base;
-            eia_proj = std::make_unique<EIAProj>(*util, *formula);
-            if (*preprocessed.eia_n_base) {
+        if (common_base) {
+            util->base = *common_base;
+            eia_proj = std::make_unique<EIAProj>(*util, formula);
+            if (*common_base) {
                 algorithms.erase(Algorithm::Z3);
             }
         } else {
-            formula = &preprocessed.simple;
             algorithms.erase(Algorithm::Z3);
             algorithms.erase(Algorithm::EIA);
             algorithms.erase(Algorithm::EIAProj);
         }
-        solver.add(*formula);
+        solver.add(formula);
 
         frames.back().preprocessed_assertions.clear();
         if (config.validate_sat || config.validate_unsat || config.get_lemmas) {
-            frames.back().preprocessed_assertions.emplace_back(*formula, input);
+            frames.back().preprocessed_assertions.emplace_back(formula, input);
         }
         frames.back().exp_ids.clear();
         frames.back().exps.resize(0);
         frames.back().exp_groups.clear();
         frames.back().bounding_lemmas.clear();
         stats.non_constant_base = false;
-        for (const auto &g: exp_finder->find_exps(*formula)) {
+        for (const auto &g: exp_finder->find_exps(formula)) {
             if (frames.back().exp_ids.emplace(g.orig().id()).second) {
                 frames.back().exps.push_back(g.orig());
                 frames.back().exp_groups.emplace_back(std::make_shared<ExpGroup>(g));

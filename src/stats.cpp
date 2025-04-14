@@ -29,7 +29,6 @@ namespace swine {
 
     Timings& Timings::operator+=(const Timings &dt) {
         preprocessing += dt.preprocessing;
-        base_detection += dt.base_detection;
         solving += dt.solving;
         for(const auto &[a,t] : dt.algorithms)
             add_to_algorithm(a,t);
@@ -69,7 +68,6 @@ namespace swine {
 
     std::ostream& operator<<(std::ostream &s, const Timings &timings) {
         line(s, "preprocessing",    timings.preprocessing, false);
-        line(s, "- base detection", timings.base_detection);
         line(s, "solving",          timings.solving);
         for(Algorithm a : algorithm::values) {
             if(!timings.algorithms.contains(a))

@@ -12,7 +12,7 @@ using namespace std::views;
 
 Preprocessor::Preprocessor(Util &util): util(util), rewriter(util), constant_propagator(util) {}
 
-PreprocResult Preprocessor::preprocess(const z3::expr &term, bool full) {
+std::pair<z3::expr, std::optional<cpp_int>> Preprocessor::preprocess(const z3::expr &term, bool full) {
     const auto log = [&](const z3::expr &term, const PreprocKind kind, const std::function<z3::expr(const z3::expr&)> &f){
         bool done {false};
         const z3::expr res {f(term)};
@@ -66,7 +66,7 @@ PreprocResult Preprocessor::preprocess(const z3::expr &term, bool full) {
     res = res.simplify();
     write_log("simplify:\n" << res);
     if (!full || !util.config.is_active(LemmaKind::EIA_n)) {
-        return { res, res, { } };
+        return { res, { } };
     }
     z3::expr simple = res;
 
@@ -91,9 +91,9 @@ PreprocResult Preprocessor::preprocess(const z3::expr &term, bool full) {
     }
 
     std::optional<cpp_int> common_base = utils::get_eia_n_base(res);
-    if (!common_base) {
-        write_log("Not in EIA_n, no further preprocessing");
-        return { simple, res, { } };
+    if (!common_base || !*common_base) {
+        write_log((common_base ? "Linear formula" : "Not in EIA_n") << ", no further preprocessing");
+        return { common_base ? res : simple, common_base };
     }
     write_log("Formula in EIA_" << *common_base << ", further preprocessing");
 
@@ -126,7 +126,7 @@ PreprocResult Preprocessor::preprocess(const z3::expr &term, bool full) {
     res = utils::replace_eq(res);
     write_log("replace equalities:\n" << res);
 #endif
-    return { simple, res.simplify(), common_base };
+    return { res.simplify(), common_base };
 }
 
 }

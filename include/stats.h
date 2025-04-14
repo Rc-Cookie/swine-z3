@@ -67,8 +67,6 @@ namespace swine {
 
         /** Time spent transforming the input formula and populating caches. */
         duration preprocessing {0};
-        /** Time spent during preprocessing for detecting a common exp() base. */
-        duration base_detection {0};
         /** Time spent actually solving. */
         duration solving {0};
         /** Time spent solving with each algorithm. If an algorithm is not present, it's implicitly 0. */

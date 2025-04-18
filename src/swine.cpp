@@ -455,6 +455,9 @@ void Swine::prime_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
     if (!config.is_active(LemmaKind::Prime)) {
         return;
     }
+    const auto mk_lem = [&](const auto &ee, const auto &dt) {
+        return (z3::mod(ee.base, dt) == 0 && ee.exponent != 0) == (z3::mod(ee.exp_expression, dt) == 0);
+    };
     for (auto f: frames) {
         for (auto e: f.exps) {
             const auto ee {evaluate_exponential(e)};
@@ -477,8 +480,7 @@ void Swine::prime_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
                     }
                 } else {
                     const auto dt {util->term(d)};
-                    const auto l {(z3::mod(ee.base, dt) == 0) == (z3::mod(ee.exp_expression, dt) == 0)};
-                    lemmas.emplace_back(l, LemmaKind::Prime);
+                    lemmas.emplace_back(mk_lem(ee, dt), LemmaKind::Prime);
                     return true;
                 }
                 return false;
@@ -499,8 +501,7 @@ void Swine::prime_lemmas(std::vector<std::pair<z3::expr, LemmaKind>> &lemmas) {
             }
             if (!done) {
                 const auto dt {util->term(base_val)};
-                const auto l{(z3::mod(ee.base, dt) == 0) == (z3::mod(ee.exp_expression, dt) == 0)};
-                lemmas.emplace_back(l, LemmaKind::Prime);
+                lemmas.emplace_back(mk_lem(ee, dt), LemmaKind::Prime);
             }
         }
     }

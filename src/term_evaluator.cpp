@@ -18,7 +18,7 @@ z3::expr TermEvaluator::evaluate(const z3::expr &expression, const z3::model &mo
         for (const auto &c: expression.args()) {
             children.push_back(evaluate(c, model));
         }
-        return expression.decl()(children);
+        return model.eval(expression.decl()(children), true);
     }
 }
 

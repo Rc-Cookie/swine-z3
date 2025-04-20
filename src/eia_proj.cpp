@@ -31,7 +31,7 @@ namespace swine {
             const std::vector<expr> remainingVars = remainingVarsAndExps | values | filter(is_var) | to_vec<expr>();
 
             if(remainingVars.size() == remainingVarsAndExps.size()) {
-                log("Fully linearized " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
+                log("Fully linearized in " << iterations << " iteration" << (iterations == 1 ? "" : "s"));
                 // All linear, and approximation is already a model for linear terms
                 return { /* Not the actual promises, but irrelevant */ util.top(), sat };
             }

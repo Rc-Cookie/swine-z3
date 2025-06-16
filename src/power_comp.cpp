@@ -353,7 +353,7 @@ namespace swine {
             }
 
             for(const Divisibility &d : power_comp_divs) {
-                if(replaced.contains(d.original.id()) || d.dividend.variables.begin()->second.arg(1).id() != id)
+                if(replaced.contains(d.original.id()) || (!d.dividend.variables.empty() && d.dividend.variables.begin()->second.arg(1).id() != id))
                     continue;
                 replacements.push_back({ d.original, d.linearize() });
                 replaced.emplace(d.original.id());

@@ -433,8 +433,23 @@ namespace utils {
     bool is_in_eia_n(const z3::expr &expr, std::optional<cpp_int> &common_base) {
         if(!common_base)
             return false;
-        for(const z3::expr &t : utils::find(expr, [](const z3::expr &e){ return e.is_int(); }))
-            if(!collect_eia_n_base(t, true, common_base).first)
+        if(expr.is_int())
+            return collect_eia_n_base(expr, true, common_base).first;
+        if(!expr.is_bool() || !expr.is_app()) {
+            common_base = {};
+            return false;
+        }
+        if(expr.is_eq() && expr.arg(0).is_int()) {
+            std::optional<Divisibility> d = Divisibility::try_parse(expr);
+            if(d) {
+                for(const auto &[_,v] : d->dividend.variables)
+                    if(is_exp(v) && !join_common_base(common_base, value(v.arg(0))))
+                        return false;
+                return true;
+            }
+        }
+        for(unsigned int i=0; i<expr.num_args(); i++)
+            if(!is_in_eia_n(expr.arg(i), common_base))
                 return false;
         return true;
     }

@@ -20,7 +20,7 @@ namespace swine {
 
     std::pair<expr, check_result> EIAProj::evaluateCase(const model &approximation) {
 
-        expr formula = original_formula;
+        expr formula = abSimplifyDiv(original_formula, variables_in(original_formula, true, true), approximation).conclusion;
 
         for(int iterations = 1;; iterations++) {
 

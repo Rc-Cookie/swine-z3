@@ -293,6 +293,9 @@ namespace swine {
             todo.emplace_back(linearize(formula, vars));
             return;
         }
+        debug("Problematic comparisons:");
+        for(const Comparison &c : allProblematicComps)
+            debug("  " << c);
 
 #if CHECK_SEM_COVER_FEASIBILITY
         solver.push();
@@ -470,14 +473,19 @@ namespace swine {
                 for(const expr &e : *transformed) {
 #if SPLIT_ABS
                     util.stats.timings.eia_iter_sem_cover += timer.get_and_reset();
-                    log("Linearizing " << (precondition && varIsLargest && e));
-                    todo.emplace_back(precondition && varIsLargest && linearize(e, vars));
+                    log("Linearizing " << e);
+                    const z3::expr linearized = linearize(e, vars);
+                    log("Linearized: " << linearized);
+                    todo.emplace_back(precondition && varIsLargest && linearized);
                     util.stats.timings.eia_iter_linearize += timer.get_and_reset();
 #else
                     // Replace ITEs from abs, then split disjuncts
                     for(const expr &disjunct : find_bools(replace_ite(varIsLargest && e), [](const expr &e){ return !e.is_or(); })) {
                         util.stats.timings.eia_iter_sem_cover += timer.get_and_reset();
-                        todo.emplace_back(linearize(disjunct, vars));
+                        log("Linearizing " << disjunct);
+                        const z3::expr linearized = linearize(disjunct, vars);
+                        log("Linearized: " << linearized);
+                        todo.emplace_back(linearized);
                         util.stats.timings.eia_iter_linearize += timer.get_and_reset();
                     }
 #endif

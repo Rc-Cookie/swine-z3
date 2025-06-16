@@ -131,7 +131,7 @@ namespace swine {
         for(const Divisibility &d : divisibilities)
             simplified = substitute(simplified, d.original, substitute_all(d.original, replacements));
 
-        return { premise, simplified };
+        return { premise, premise && simplified };
     }
 
 

@@ -114,7 +114,7 @@ namespace swine {
                 }
                 return replace_ite(abs(var) == term(s, exp));
             }
-            s = (s * base) % divisor;
+            expS = (expS * base) % divisor;
         }
         return original.ctx().bool_val(false);
     }
